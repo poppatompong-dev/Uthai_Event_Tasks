@@ -13,6 +13,13 @@
 # testing
 /coverage
 
+# Service Account Credentials (IMPORTANT: Never commit this!)
+service-account.json
+
+# Uploaded files (local storage)
+/public/uploads/*
+!/public/uploads/README.md
+
 # next.js
 /.next/
 /out/
