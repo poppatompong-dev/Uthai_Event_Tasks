@@ -2,100 +2,135 @@
 
 import React, { useState } from 'react';
 
-export default function UserGuide() {
-    const [isExpanded, setIsExpanded] = useState(false);
+interface GuideItem {
+    color?: string;
+    text: string;
+}
 
-    const guideItems = [
+interface GuideSection {
+    title: string;
+    items: GuideItem[];
+}
+
+export default function UserGuide() {
+    const [isOpen, setIsOpen] = useState(false);
+
+    const guides: GuideSection[] = [
         {
-            icon: '📅',
-            title: 'ดูปฏิทินด่วน',
-            description: 'คลิกที่วันที่ในปฏิทินด้านบนเพื่อดูรายละเอียดกิจกรรม หรือคลิกเพื่อเปิดแผงรายละเอียด',
-        },
-        {
-            icon: '🎨',
-            title: 'ความหมายของสี',
+            title: 'แถบสีแสดงสถานะกิจกรรม',
             items: [
-                { color: 'bg-teal-500', text: 'วันทำงานปกติ (จ-ศ)' },
-                { color: 'bg-purple-500', text: 'วันเสาร์' },
-                { color: 'bg-red-500', text: 'วันอาทิตย์' },
-                { color: 'bg-amber-400', text: 'วันที่มีกิจกรรม 🌟' },
-                { color: 'bg-rose-500', text: 'วันหยุดราชการ' },
-            ],
+                { color: 'bg-emerald-500', text: 'กิจกรรมทั่วไป (เสร็จสิ้น/ปกติ)' },
+                { color: 'bg-blue-500', text: 'กิจกรรมที่มีไฟล์แนบ' },
+                { color: 'bg-amber-500', text: 'วันหยุดราชการ' },
+                { color: 'bg-purple-500', text: 'กิจกรรมสำคัญ' },
+                { color: 'bg-rose-500', text: 'กิจกรรมเร่งด่วน' },
+            ]
         },
         {
-            icon: '👨‍💼',
-            title: 'สำหรับผู้ดูแลระบบ',
-            description: 'คลิกปุ่ม 🔐 ด้านขวาล่างเพื่อเข้าสู่ระบบ แล้วจึงสามารถ:',
+            title: 'ไอคอนการจัดการ',
             items: [
-                { text: '✏️ เพิ่ม/แก้ไข/ลบ กิจกรรม' },
-                { text: '👤 กำหนดผู้รับผิดชอบ' },
-                { text: '📎 แนบไฟล์เอกสาร รูปภาพ' },
-                { text: '📊 จัดการวันหยุด วันพิเศษ' },
-            ],
+                { text: '✏️ แก้ไข: คลิกที่วันที่ต้องการแก้ไข' },
+                { text: '🗑️ ลบ: คลิกปุ่มลบในหน้าต่างแก้ไข' },
+                { text: '📎 แนบไฟล์: รองรับ PDF และรูปภาพ' },
+                { text: '📥 นำเข้า: นำเข้าข้อมูลจาก Excel/CSV' },
+            ]
         },
         {
-            icon: '💡',
-            title: 'เคล็ดลับ',
+            title: 'ช็อตคัตคีย์บอร์ด',
             items: [
-                { text: '🔍 ใช้เมนูเลือกปีงบประมาณเพื่อดูข้อมูลย้อนหลัง' },
-                { text: '📱 รองรับการใช้งานบนมือถือ' },
-                { text: '🖱️ วางเมาส์บนวันที่เพื่อดู tooltip รายละเอียด' },
-            ],
-        },
+                { text: 'ESC: ปิดหน้าต่าง Popup' },
+                { text: '← →: เปลี่ยนเดือน' },
+            ]
+        }
     ];
 
     return (
-        <div className="guide-card p-6 mb-6">
-            <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between"
-            >
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg feature-icon">
-                        <span className="text-2xl">📖</span>
-                    </div>
-                    <div className="text-left">
-                        <h3 className="text-xl font-bold gradient-text">คู่มือการใช้งาน</h3>
-                        <p className="text-gray-500 text-sm">เรียนรู้วิธีใช้งานระบบปฏิทินกิจกรรม</p>
-                    </div>
-                </div>
-                <div className={`transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                    <span className="text-2xl text-gray-400">▼</span>
-                </div>
-            </button>
-
-            {isExpanded && (
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 animate-[fadeIn_0.3s_ease-out]">
-                    {guideItems.map((item, index) => (
-                        <div
-                            key={index}
-                            className="p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-100 hover:shadow-md transition-all"
+        <div className="fixed bottom-6 right-20 z-40">
+            {/* Guide Popup */}
+            {isOpen && (
+                <div
+                    className="absolute bottom-16 right-0 w-80 bg-white rounded-xl shadow-2xl p-0 overflow-hidden border border-gray-100 animate-slideUp origin-bottom-right"
+                    style={{ animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}
+                >
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 flex justify-between items-center text-white">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xl">📚</span>
+                            <h3 className="font-bold text-lg">คู่มือการใช้งาน</h3>
+                        </div>
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            className="bg-white/20 hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center transition-all"
                         >
-                            <div className="flex items-start gap-3">
-                                <span className="text-2xl">{item.icon}</span>
-                                <div className="flex-1">
-                                    <h4 className="font-semibold text-gray-800 mb-2">{item.title}</h4>
-                                    {item.description && (
-                                        <p className="text-gray-600 text-sm mb-2">{item.description}</p>
-                                    )}
-                                    {item.items && (
-                                        <ul className="space-y-1">
-                                            {item.items.map((subItem, subIndex) => (
-                                                <li key={subIndex} className="flex items-center gap-2 text-sm text-gray-600">
-                                                    {'color' in subItem && (
-                                                        <div className={`w-4 h-4 rounded ${subItem.color}`}></div>
-                                                    )}
-                                                    <span>{subItem.text}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
+                            ✕
+                        </button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                        <div className="space-y-6">
+                            {guides.map((item, index) => (
+                                <div key={index} className="space-y-3">
+                                    <h4 className="font-semibold text-gray-800 border-b pb-2 flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                        {item.title}
+                                    </h4>
+                                    <ul className="space-y-2">
+                                        {item.items.map((subItem, subIndex) => (
+                                            <li key={subIndex} className="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                                                {/* ใช้ Optional Chaining และ Default Value เพื่อแก้ Type Error */}
+                                                {subItem.color ? (
+                                                    <div className={`w-5 h-5 rounded-md shadow-sm border border-gray-200 ${subItem.color} flex-shrink-0`}></div>
+                                                ) : (
+                                                    <div className="w-5 h-5 flex items-center justify-center text-gray-400 flex-shrink-0">•</div>
+                                                )}
+                                                <span>{subItem.text}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Footer Tips */}
+                        <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                            <div className="flex gap-2">
+                                <span className="text-lg">💡</span>
+                                <div>
+                                    <h5 className="font-semibold text-blue-800 text-sm">เกร็ดความรู้</h5>
+                                    <p className="text-xs text-blue-600 mt-1">
+                                        คุณสามารถลากไฟล์มาวางในช่องแนบไฟล์ได้โดยตรงเพื่อความรวดเร็ว
+                                    </p>
                                 </div>
                             </div>
                         </div>
-                    ))}
+                    </div>
                 </div>
             )}
+
+            {/* Floating Trigger Button */}
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 group ${isOpen
+                        ? 'bg-gray-800 text-white rotate-90'
+                        : 'bg-white text-blue-600 hover:bg-blue-50'
+                    }`}
+                title="คู่มือการใช้งาน"
+            >
+                {isOpen ? (
+                    <span className="text-xl font-bold">✕</span>
+                ) : (
+                    <span className="text-3xl filter drop-shadow-sm group-hover:rotate-12 transition-transform">📖</span>
+                )}
+
+                {/* Ping Animation Indicator */}
+                {!isOpen && (
+                    <span className="absolute top-0 right-0 -mr-1 -mt-1 w-4 h-4">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-4 w-4 bg-blue-500 border-2 border-white"></span>
+                    </span>
+                )}
+            </button>
         </div>
     );
 }
