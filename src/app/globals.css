@@ -56,7 +56,7 @@ body {
 
 .marquee-content {
   display: inline-flex;
-  animation: marqueeScroll 180s linear infinite;
+  animation: marqueeScroll 300s linear infinite;
   white-space: nowrap;
 }
 

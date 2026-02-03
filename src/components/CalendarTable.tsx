@@ -89,17 +89,17 @@ export default function CalendarTable({ onDayClick }: CalendarTableProps) {
     };
 
     return (
-        <div className="overflow-x-auto shadow-inner rounded-xl">
-            <table className="w-full border-collapse text-sm">
+        <div className="overflow-x-auto shadow-inner rounded-xl calendar-wrapper">
+            <table className="w-full border-collapse calendar-table">
                 <thead>
                     <tr className="bg-gradient-to-r from-slate-700 via-slate-800 to-slate-700 text-white">
-                        <th className="border border-white/20 px-2 py-3 text-sm font-bold">📅 เดือน/วันที่</th>
+                        <th className="border border-white/20 px-3 py-4 text-base md:text-lg font-bold sticky left-0 bg-slate-800 z-10">📅 เดือน</th>
                         {Array.from({ length: 31 }, (_, i) => (
-                            <th key={i + 1} className="border border-white/20 px-1 py-3 text-xs font-semibold min-w-[32px]">
+                            <th key={i + 1} className="border border-white/20 px-1 md:px-2 py-3 md:py-4 text-sm md:text-base font-semibold min-w-[36px] md:min-w-[44px]">
                                 {i + 1}
                             </th>
                         ))}
-                        <th className="border border-white/20 px-2 py-3 text-sm font-bold">📊 รวม</th>
+                        <th className="border border-white/20 px-3 py-4 text-base md:text-lg font-bold">📊 รวม</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -109,7 +109,7 @@ export default function CalendarTable({ onDayClick }: CalendarTableProps) {
 
                         return (
                             <tr key={month.id} className="hover:bg-gray-50/50">
-                                <td className="border border-gray-200 px-2 py-2 font-medium bg-gradient-to-r from-slate-600 to-slate-700 text-white text-center whitespace-nowrap">
+                                <td className="border border-gray-200 px-3 py-3 md:py-4 font-semibold text-sm md:text-base bg-gradient-to-r from-slate-600 to-slate-700 text-white text-center whitespace-nowrap sticky left-0 z-10">
                                     {month.name}
                                 </td>
                                 {Array.from({ length: 31 }, (_, i) => {
@@ -129,13 +129,13 @@ export default function CalendarTable({ onDayClick }: CalendarTableProps) {
                                     return (
                                         <td
                                             key={dayNum}
-                                            className={`border border-white/30 px-1 py-2 text-center cursor-pointer transition-all hover:scale-110 hover:shadow-xl hover:z-10 ${cellStyle} text-white font-semibold relative`}
+                                            className={`border border-white/30 px-1 md:px-2 py-3 md:py-4 text-center cursor-pointer transition-all hover:scale-105 hover:shadow-xl hover:z-10 ${cellStyle} text-white font-bold text-sm md:text-base relative`}
                                             onClick={() => onDayClick && dayData && onDayClick(dayData, month)}
                                             title={dayData?.entries?.[0]?.detail || getDayTitle(dayOfWeek)}
                                         >
                                             {dayNum}
                                             {hasFiles && (
-                                                <span className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full shadow-sm"></span>
+                                                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-yellow-400 rounded-full shadow-md border border-white"></span>
                                             )}
                                             {hasActivityFlag && (
                                                 <span className="activity-badge"></span>
@@ -143,7 +143,7 @@ export default function CalendarTable({ onDayClick }: CalendarTableProps) {
                                         </td>
                                     );
                                 })}
-                                <td className="border border-gray-200 px-2 py-2 text-center font-bold bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-lg">
+                                <td className="border border-gray-200 px-3 py-3 md:py-4 text-center font-bold bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-lg md:text-xl">
                                     {workingDays}
                                 </td>
                             </tr>
@@ -151,9 +151,9 @@ export default function CalendarTable({ onDayClick }: CalendarTableProps) {
                     })}
                     {/* Total Row */}
                     <tr className="bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 text-white font-bold">
-                        <td className="border border-white/20 px-2 py-3 text-center text-lg">🎯 รวมทั้งสิ้น</td>
+                        <td className="border border-white/20 px-3 py-4 text-center text-base md:text-lg sticky left-0 bg-indigo-700 z-10">🎯 รวมทั้งปี</td>
                         <td colSpan={31} className="border border-white/20"></td>
-                        <td className="border border-white/20 px-2 py-3 text-center text-xl">
+                        <td className="border border-white/20 px-3 py-4 text-center text-xl md:text-2xl">
                             {yearMonths.reduce((sum, month) => sum + getWorkingDaysCount(month.id), 0)}
                         </td>
                     </tr>
