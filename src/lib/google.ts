@@ -11,11 +11,17 @@ function getAuth() {
 
   if (clientEmail && privateKey) {
     console.log('Using Environment Variables for Google Auth');
+
+    // Clean up private key: handle both literal \n and encoded \\n, and remove surrounding quotes
+    let cleanKey = privateKey.replace(/\\n/g, '\n');
+    if (cleanKey.startsWith('"') && cleanKey.endsWith('"')) {
+      cleanKey = cleanKey.slice(1, -1);
+    }
+
     return new google.auth.GoogleAuth({
       credentials: {
         client_email: clientEmail,
-        // Make sure to handle escaped newlines in the private key
-        private_key: privateKey.replace(/\\n/g, '\n'),
+        private_key: cleanKey,
       },
       scopes: [
         'https://www.googleapis.com/auth/spreadsheets',
