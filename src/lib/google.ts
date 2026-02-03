@@ -24,25 +24,29 @@ function getAuth() {
     });
   }
 
-  // 2. Fallback to local service-account.json (for Local development)
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const serviceAccount = require('../../service-account.json');
-    console.log('Using service-account.json for Google Auth');
-    return new google.auth.GoogleAuth({
-      credentials: {
-        client_email: serviceAccount.client_email,
-        private_key: serviceAccount.private_key,
-      },
-      scopes: [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive',
-      ],
-    });
-  } catch (error) {
-    console.error('Google Auth Error: Missing both Environment Variables and service-account.json');
-    throw new Error('Google authentication credentials missing');
+  // 2. Fallback to local service-account.json (ONLY for Local development)
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const serviceAccount = require('../../service-account.json');
+      console.log('Using service-account.json for Google Auth');
+      return new google.auth.GoogleAuth({
+        credentials: {
+          client_email: serviceAccount.client_email,
+          private_key: serviceAccount.private_key,
+        },
+        scopes: [
+          'https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/drive',
+        ],
+      });
+    } catch {
+      // Ignore error in local dev if file is missing (will fail below)
+    }
   }
+
+  console.error('Google Auth Error: Missing both Environment Variables and service-account.json');
+  throw new Error('Google authentication credentials missing');
 }
 
 export function getSheets(): sheets_v4.Sheets {

@@ -82,7 +82,7 @@ export default function UserGuide() {
                                         <ul className="space-y-1">
                                             {item.items.map((subItem, subIndex) => (
                                                 <li key={subIndex} className="flex items-center gap-2 text-sm text-gray-600">
-                                                    {subItem.color && (
+                                                    {'color' in subItem && (
                                                         <div className={`w-4 h-4 rounded ${subItem.color}`}></div>
                                                     )}
                                                     <span>{subItem.text}</span>
