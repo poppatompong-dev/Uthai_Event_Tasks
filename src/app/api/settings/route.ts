@@ -28,7 +28,11 @@ export async function GET() {
     } catch (error) {
         console.error('Error fetching settings:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch settings' },
+            {
+                error: 'Failed to fetch settings',
+                details: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined
+            },
             { status: 500 }
         );
     }
@@ -58,7 +62,10 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error('Error saving settings:', error);
         return NextResponse.json(
-            { error: 'Failed to save settings' },
+            {
+                error: 'Failed to save settings',
+                details: error instanceof Error ? error.message : 'Unknown error'
+            },
             { status: 500 }
         );
     }

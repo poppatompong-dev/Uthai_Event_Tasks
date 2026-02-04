@@ -5,37 +5,13 @@ const FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID!;
 
 // Initialize Google Auth
 function getAuth() {
-  // 1. Try to get credentials from environment variables (for Vercel/Netlify)
-  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY;
-
-  if (clientEmail && privateKey) {
-    console.log('Using Environment Variables for Google Auth');
-
-    // Clean up private key: handle both literal \n and encoded \\n, and remove surrounding quotes
-    let cleanKey = privateKey.replace(/\\n/g, '\n');
-    if (cleanKey.startsWith('"') && cleanKey.endsWith('"')) {
-      cleanKey = cleanKey.slice(1, -1);
-    }
-
-    return new google.auth.GoogleAuth({
-      credentials: {
-        client_email: clientEmail,
-        private_key: cleanKey,
-      },
-      scopes: [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive',
-      ],
-    });
-  }
-
-  // 2. Fallback to local service-account.json (ONLY for Local development)
+  // 1. Try to load from service-account.json first for Local Development
   if (process.env.NODE_ENV !== 'production') {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const serviceAccount = require('../../service-account.json');
-      console.log('Using service-account.json for Google Auth');
+      console.log('Successfully loaded Google Auth from service-account.json');
+
       return new google.auth.GoogleAuth({
         credentials: {
           client_email: serviceAccount.client_email,
@@ -46,13 +22,40 @@ function getAuth() {
           'https://www.googleapis.com/auth/drive',
         ],
       });
-    } catch {
-      // Ignore error in local dev if file is missing (will fail below)
+    } catch (error) {
+      console.warn('Local service-account.json could not be loaded, using Env Vars instead.');
     }
   }
 
-  console.error('Google Auth Error: Missing both Environment Variables and service-account.json');
-  throw new Error('Google authentication credentials missing');
+  // 2. Try Environment Variables (Primary for Vercel/Production)
+  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+
+  if (clientEmail && privateKey) {
+    try {
+      // Clean up private key: handle both literal \n and encoded \\n, and remove surrounding quotes
+      let cleanKey = privateKey.replace(/\\n/g, '\n');
+      if (cleanKey.startsWith('"') && cleanKey.endsWith('"')) {
+        cleanKey = cleanKey.slice(1, -1);
+      }
+
+      return new google.auth.GoogleAuth({
+        credentials: {
+          client_email: clientEmail,
+          private_key: cleanKey,
+        },
+        scopes: [
+          'https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/drive',
+        ],
+      });
+    } catch (error) {
+      console.error('Google Auth Error (Env Vars):', error);
+    }
+  }
+
+  console.error('Google Auth Error: Missing Google API Configuration');
+  throw new Error('Google authentication credentials missing or invalid');
 }
 
 export function getSheets(): sheets_v4.Sheets {
