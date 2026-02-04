@@ -12,12 +12,14 @@ import UserGuide from '@/components/UserGuide';
 import DayDetailModal from '@/components/DayDetailModal';
 import BulkImportModal from '@/components/BulkImportModal';
 import ActivitiesDetail from '@/components/ActivitiesDetail';
+import LandingPage from '@/components/LandingPage';
 import { Day, Month, Attachment } from '@/lib/types';
 
 // Municipality Logo URL
 const MUNICIPALITY_LOGO = 'https://img5.pic.in.th/file/secure-sv1/logo458ee4aa05680920.jpg';
 
 type TabType = 'calendar' | 'activities' | 'guide';
+type ViewMode = 'landing' | 'main';
 
 export default function HomePage() {
   const { settings, years, selectedYear, setSelectedYear, isLoading, isAdmin, logout, currentUser } = useApp();
@@ -32,6 +34,7 @@ export default function HomePage() {
   const [galleryAttachments, setGalleryAttachments] = useState<Attachment[]>([]);
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('calendar');
+  const [viewMode, setViewMode] = useState<ViewMode>('landing');
 
   const selectedYearData = years.find((y) => y.id === selectedYear);
 
@@ -68,6 +71,25 @@ export default function HomePage() {
     setShowGallery(true);
   };
 
+  const handleEnterCalendar = () => {
+    setViewMode('main');
+  };
+
+  const handleBackToLanding = () => {
+    setViewMode('landing');
+  };
+
+  const handleLoginClick = () => {
+    setShowLoginModal(true);
+  };
+
+  // Effect: เมื่อ login สำเร็จให้เข้าหน้า main อัตโนมัติ
+  React.useEffect(() => {
+    if (isAdmin) {
+      setViewMode('main');
+    }
+  }, [isAdmin]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
@@ -77,6 +99,19 @@ export default function HomePage() {
           <div className="loading-spinner mt-4"></div>
         </div>
       </div>
+    );
+  }
+
+  // Show Landing Page for non-admin users who haven't entered the calendar yet
+  if (viewMode === 'landing' && !isAdmin) {
+    return (
+      <>
+        <LandingPage
+          onEnterCalendar={handleEnterCalendar}
+          onLogin={handleLoginClick}
+        />
+        <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
+      </>
     );
   }
 
@@ -110,6 +145,18 @@ export default function HomePage() {
 
             {/* Year Selection & Login */}
             <div className="flex items-center gap-3">
+              {/* Back to Landing (for non-admin) */}
+              {!isAdmin && (
+                <button
+                  onClick={handleBackToLanding}
+                  className="px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm transition-all flex items-center gap-1"
+                  title="กลับหน้าหลัก"
+                >
+                  <span>🏠</span>
+                  <span className="hidden md:inline">หน้าหลัก</span>
+                </button>
+              )}
+
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
@@ -149,13 +196,13 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Admin Controls */}
+      {/* Admin Controls - Only visible for Admin */}
       {isAdmin && (
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-2 px-4 flex-shrink-0">
           <div className="container mx-auto flex items-center justify-between">
             <span className="flex items-center gap-2 text-sm">
               <span>✅</span>
-              <span>Admin Mode</span>
+              <span>โหมดผู้ดูแลระบบ (Admin Mode)</span>
             </span>
             <div className="flex gap-2">
               <button
@@ -171,6 +218,36 @@ export default function HomePage() {
               >
                 <span>📋</span>
                 <span className="hidden md:inline">จัดการกิจกรรม</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Quick Actions - Only visible for non-Admin */}
+      {!isAdmin && (
+        <div className="bg-gradient-to-r from-sky-500 to-blue-500 text-white py-2 px-4 flex-shrink-0">
+          <div className="container mx-auto flex items-center justify-between">
+            <span className="flex items-center gap-2 text-sm">
+              <span>👤</span>
+              <span>โหมดผู้ใช้ทั่วไป - ดูข้อมูลได้อย่างเดียว</span>
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab('calendar')}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center gap-1 ${activeTab === 'calendar' ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'
+                  }`}
+              >
+                <span>📅</span>
+                <span className="hidden md:inline">ปฏิทิน</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('activities')}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center gap-1 ${activeTab === 'activities' ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'
+                  }`}
+              >
+                <span>📋</span>
+                <span className="hidden md:inline">กิจกรรม</span>
               </button>
             </div>
           </div>

@@ -4,10 +4,11 @@ import { Readable } from 'stream';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
 
-const MAX_SIZE_MB = 25;
+// Maximum file size: 5MB after compression
+const MAX_SIZE_MB = 10;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
-// Local upload directory
+// Local upload directory (fallback)
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
 
 // Try to import sharp, but handle if it fails
@@ -16,7 +17,7 @@ try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     sharp = require('sharp');
 } catch {
-    console.warn('Sharp module not available, image compression disabled');
+    console.warn('Sharp module not available, server-side image compression disabled');
 }
 
 async function compressImage(buffer: Buffer, mimeType: string): Promise<Buffer> {
@@ -109,9 +110,20 @@ async function uploadToLocal(buffer: Buffer, fileName: string, mimeType: string)
     };
 }
 
-// Upload to Google Drive
+// Upload to Google Drive with improved error handling
 async function uploadToGoogleDrive(buffer: Buffer, fileName: string, mimeType: string) {
-    const drive = getDrive();
+    // Validate FOLDER_ID
+    if (!FOLDER_ID) {
+        throw new Error('GOOGLE_DRIVE_FOLDER_ID is not configured');
+    }
+
+    let drive;
+    try {
+        drive = getDrive();
+    } catch (authError) {
+        console.error('Google Drive authentication failed:', authError);
+        throw new Error('Google Drive authentication failed. Please check service account credentials.');
+    }
 
     const fileMetadata = {
         name: `${Date.now()}_${fileName}`,
@@ -123,27 +135,46 @@ async function uploadToGoogleDrive(buffer: Buffer, fileName: string, mimeType: s
         body: bufferToStream(buffer),
     };
 
-    const uploadedFile = await drive.files.create({
-        requestBody: fileMetadata,
-        media: media,
-        fields: 'id, name, mimeType, size',
-    });
+    console.log(`Uploading to Google Drive: ${fileName} (${buffer.length} bytes)`);
+
+    let uploadedFile;
+    try {
+        uploadedFile = await drive.files.create({
+            requestBody: fileMetadata,
+            media: media,
+            fields: 'id, name, mimeType, size',
+        });
+    } catch (uploadError) {
+        console.error('Google Drive upload error:', uploadError);
+        const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown upload error';
+        throw new Error(`Failed to upload to Google Drive: ${errorMessage}`);
+    }
 
     if (!uploadedFile.data.id) {
         throw new Error('No file ID returned from Google Drive');
     }
 
-    // Set public permissions
-    await drive.permissions.create({
-        fileId: uploadedFile.data.id,
-        requestBody: {
-            role: 'reader',
-            type: 'anyone',
-        },
-    });
+    console.log(`Uploaded file ID: ${uploadedFile.data.id}`);
 
-    // Create thumbnail
+    // Set public permissions
+    try {
+        await drive.permissions.create({
+            fileId: uploadedFile.data.id,
+            requestBody: {
+                role: 'reader',
+                type: 'anyone',
+            },
+        });
+    } catch (permError) {
+        console.warn('Failed to set public permissions:', permError);
+        // Continue anyway - file is uploaded but may not be publicly accessible
+    }
+
+    // Generate direct view/download URL
+    const fileUrl = `https://drive.google.com/uc?export=view&id=${uploadedFile.data.id}`;
     let thumbnailUrl = `https://lh3.googleusercontent.com/d/${uploadedFile.data.id}`;
+
+    // Create thumbnail for images
     if (mimeType.startsWith('image/')) {
         try {
             const thumbnail = await createThumbnail(buffer, mimeType);
@@ -175,19 +206,22 @@ async function uploadToGoogleDrive(buffer: Buffer, fileName: string, mimeType: s
                     thumbnailUrl = `https://lh3.googleusercontent.com/d/${thumbFile.data.id}`;
                 }
             }
-        } catch {
+        } catch (thumbError) {
+            console.warn('Thumbnail creation failed:', thumbError);
             // Continue without custom thumbnail
         }
     }
 
     return {
         id: uploadedFile.data.id,
-        url: `https://lh3.googleusercontent.com/d/${uploadedFile.data.id}`,
+        url: fileUrl,
         thumbnailUrl,
     };
 }
 
 export async function POST(request: NextRequest) {
+    console.log('=== Upload API Called ===');
+
     try {
         let formData;
         try {
@@ -209,24 +243,34 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        console.log(`Processing ${files.length} files`);
+
         const uploadedFiles = [];
         const errors: string[] = [];
 
         // Check if Google Drive is available
         let useGoogleDrive = true;
+        let driveCheckError = '';
+
         if (!FOLDER_ID) {
             console.log('FOLDER_ID not configured, using local storage');
             useGoogleDrive = false;
+            driveCheckError = 'GOOGLE_DRIVE_FOLDER_ID not set';
         } else {
             try {
                 getDrive();
+                console.log('Google Drive authentication successful');
             } catch (authError) {
-                console.warn('Google Drive auth failed, using local storage:', authError);
+                console.warn('Google Drive auth failed:', authError);
                 useGoogleDrive = false;
+                driveCheckError = authError instanceof Error ? authError.message : 'Auth failed';
             }
         }
 
         console.log(`Upload mode: ${useGoogleDrive ? 'Google Drive' : 'Local Storage'}`);
+        if (!useGoogleDrive) {
+            console.log(`Reason: ${driveCheckError}`);
+        }
 
         for (const file of files) {
             try {
@@ -241,17 +285,18 @@ export async function POST(request: NextRequest) {
                 const mimeType = file.type || 'application/octet-stream';
                 const fileName = file.name;
 
-                console.log(`Processing: ${fileName}, size: ${fileBuffer.length}, type: ${mimeType}`);
+                console.log(`Processing: ${fileName}, size: ${fileBuffer.length} bytes, type: ${mimeType}`);
 
-                // Compress image if possible
-                if (mimeType.startsWith('image/')) {
+                // Compress image if possible (server-side)
+                if (mimeType.startsWith('image/') && sharp) {
                     try {
                         const compressed = await compressImage(fileBuffer, mimeType);
                         if (compressed.length < fileBuffer.length) {
-                            console.log(`Compressed ${fileName} from ${fileBuffer.length} to ${compressed.length}`);
+                            console.log(`Server compressed ${fileName}: ${fileBuffer.length} -> ${compressed.length} bytes`);
                             fileBuffer = compressed;
                         }
-                    } catch {
+                    } catch (compressError) {
+                        console.warn(`Server compression failed for ${fileName}:`, compressError);
                         // Continue with original
                     }
                 }
@@ -261,10 +306,21 @@ export async function POST(request: NextRequest) {
                 if (useGoogleDrive) {
                     try {
                         result = await uploadToGoogleDrive(fileBuffer, fileName, mimeType);
+                        console.log(`Google Drive upload success: ${fileName} -> ${result.url}`);
                     } catch (driveError) {
-                        console.warn('Google Drive upload failed, trying local:', driveError);
-                        // Fallback to local
-                        result = await uploadToLocal(fileBuffer, fileName, mimeType);
+                        console.error('Google Drive upload failed:', driveError);
+                        const errorMsg = driveError instanceof Error ? driveError.message : 'Unknown error';
+
+                        // Try local fallback
+                        console.log('Trying local storage fallback...');
+                        try {
+                            result = await uploadToLocal(fileBuffer, fileName, mimeType);
+                            errors.push(`${fileName}: บันทึกในเครื่องแทน (Google Drive: ${errorMsg})`);
+                        } catch (localError) {
+                            console.error('Local fallback also failed:', localError);
+                            errors.push(`${fileName}: ${errorMsg}`);
+                            continue;
+                        }
                     }
                 } else {
                     result = await uploadToLocal(fileBuffer, fileName, mimeType);
@@ -288,15 +344,20 @@ export async function POST(request: NextRequest) {
         }
 
         if (uploadedFiles.length === 0) {
+            const errorDetail = errors.length > 0 ? errors.join('; ') : 'All uploads failed';
+            console.error('All uploads failed:', errorDetail);
+
             return NextResponse.json(
                 {
                     success: false,
                     error: 'ไม่สามารถอัปโหลดไฟล์ได้',
-                    details: errors.length > 0 ? errors.join('; ') : 'All uploads failed'
+                    details: errorDetail
                 },
                 { status: 500 }
             );
         }
+
+        console.log(`=== Upload Complete: ${uploadedFiles.length} files ===`);
 
         return NextResponse.json({
             success: true,

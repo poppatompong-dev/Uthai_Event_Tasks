@@ -45,7 +45,7 @@ body {
   z-index: 1;
 }
 
-/* Marquee Container - Slowed down by 50% (90s total) */
+/* Marquee Container - EXTRA SLOW (180s for easy reading) */
 .marquee-container {
   background: linear-gradient(135deg, #1e3a5f, #0c4a6e, #1e3a5f);
   overflow: hidden;
@@ -56,7 +56,7 @@ body {
 
 .marquee-content {
   display: inline-flex;
-  animation: marqueeScroll 600s linear infinite;
+  animation: marqueeScroll 180s linear infinite;
   white-space: nowrap;
 }
 
@@ -66,24 +66,26 @@ body {
 
 @keyframes marqueeScroll {
   0% {
-    transform: translateX(100%);
+    transform: translateX(0%);
   }
 
   100% {
-    transform: translateX(-100%);
+    transform: translateX(-50%);
   }
 }
 
 .marquee-item {
-  padding: 0 32px;
+  padding: 0 48px;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  font-size: 1rem;
 }
 
 .marquee-divider {
   color: #f59e0b;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
+  margin: 0 8px;
 }
 
 /* Day color classes for activities table */
@@ -173,45 +175,51 @@ body {
   }
 }
 
-/* Marquee styles - SLOWED DOWN by 50% (60s instead of 30s) */
-.marquee-container {
-  background: linear-gradient(135deg, #1e3a5f, #0c4a6e, #1e3a5f);
-  overflow: hidden;
+/* Landing Page Styles */
+.landing-hero {
+  background: linear-gradient(135deg, #0d9488 0%, #0891b2 50%, #6366f1 100%);
+  min-height: 100vh;
   position: relative;
-  border-top: 3px solid #f59e0b;
-  border-bottom: 3px solid #f59e0b;
+  overflow: hidden;
 }
 
-.marquee-content {
-  display: inline-flex;
-  animation: marqueeScroll 60s linear infinite;
-  white-space: nowrap;
+.landing-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('https://img5.pic.in.th/file/secure-sv1/rm309-adj-14.jpg') center/cover;
+  opacity: 0.1;
+  z-index: 0;
 }
 
-.marquee-content:hover {
-  animation-play-state: paused;
+.hero-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  transition: all 0.4s ease;
 }
 
-@keyframes marqueeScroll {
-  0% {
-    transform: translateX(100%);
-  }
-
-  100% {
-    transform: translateX(-100%);
-  }
+.hero-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.3);
 }
 
-.marquee-item {
-  padding: 0 32px;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+.feature-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
 }
 
-.marquee-divider {
-  color: #f59e0b;
-  font-size: 1.2rem;
+.feature-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
 }
 
 /* User Guide Card */
