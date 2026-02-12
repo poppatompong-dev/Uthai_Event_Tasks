@@ -8,7 +8,7 @@ interface BulkImportModalProps {
     onClose: () => void;
 }
 
-type ImportType = 'daily' | 'weekly' | 'monthly' | 'multi-month' | 'yearly';
+type ImportType = 'daily' | 'weekly' | 'monthly' | 'multi-month' | 'custom';
 
 interface HolidayPreset {
     date: string;
@@ -180,6 +180,10 @@ export default function BulkImportModal({ isOpen, onClose }: BulkImportModalProp
     const [previewData, setPreviewData] = useState<{ date: string; detail: string; source?: string }[]>([]);
     const [showSources, setShowSources] = useState(false);
 
+    const [customDateInput, setCustomDateInput] = useState('');
+    const [customDateFormat, setCustomDateFormat] = useState<'auto' | 'thai' | 'iso' | 'excel'>('auto');
+    const [parsedCustomDates, setParsedCustomDates] = useState<{ date: string; detail: string; valid: boolean }[]>([]);
+
     const yearMonths = months.filter((m) => m.yearId === selectedYear);
     const currentYearData = years.find(y => y.id === selectedYear);
 
@@ -211,6 +215,136 @@ export default function BulkImportModal({ isOpen, onClose }: BulkImportModalProp
     const dayExists = (monthId: string, dateStr: string): boolean => {
         return days.some(d => d.monthId === monthId && d.date === dateStr);
     };
+
+    // Thai month names mapping
+    const thaiMonths: Record<string, number> = {
+        'ม.ค.': 1, 'มกรา': 1, 'มกราคม': 1,
+        'ก.พ.': 2, 'กุมภา': 2, 'กุมภาพันธ์': 2,
+        'มี.ค.': 3, 'มีนา': 3, 'มีนาคม': 3,
+        'เม.ย.': 4, 'เมษา': 4, 'เมษายน': 4,
+        'พ.ค.': 5, 'พฤษภา': 5, 'พฤษภาคม': 5,
+        'มิ.ย.': 6, 'มิถุนา': 6, 'มิถุนายน': 6,
+        'ก.ค.': 7, 'กรกฎา': 7, 'กรกฎาคม': 7,
+        'ส.ค.': 8, 'สิงหา': 8, 'สิงหาคม': 8,
+        'ก.ย.': 9, 'กันยา': 9, 'กันยายน': 9,
+        'ต.ค.': 10, 'ตุลา': 10, 'ตุลาคม': 10,
+        'พ.ย.': 11, 'พฤศจิกา': 11, 'พฤศจิกายน': 11,
+        'ธ.ค.': 12, 'ธันวา': 12, 'ธันวาคม': 12,
+    };
+
+    // Parse various date formats to ISO format (yyyy-MM-dd)
+    const parseDate = (input: string): string | null => {
+        if (!input || !input.trim()) return null;
+
+        const cleanInput = input.trim();
+
+        // Try ISO format (yyyy-MM-dd or yyyy/MM/dd)
+        const isoMatch = cleanInput.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+        if (isoMatch) {
+            const [_, year, month, day] = isoMatch;
+            const y = parseInt(year);
+            const m = parseInt(month);
+            const d = parseInt(day);
+            if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            }
+        }
+
+        // Try Thai date format (e.g., "12 ก.พ. 2568" or "12 กุมภาพันธ์ 2568")
+        const thaiMatch = cleanInput.match(/^(\d{1,2})\s+([ก-ฮ\.]+)\s+(\d{4})$/);
+        if (thaiMatch) {
+            const [_, day, monthThai, yearThai] = thaiMatch;
+            const d = parseInt(day);
+            const buddhistYear = parseInt(yearThai);
+            const gregorianYear = buddhistYear - 543;
+            const m = thaiMonths[monthThai];
+            if (m && d >= 1 && d <= 31) {
+                return `${gregorianYear}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            }
+        }
+
+        // Try DD/MM/YYYY or DD-MM-YYYY format
+        const dmyMatch = cleanInput.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+        if (dmyMatch) {
+            const [_, day, month, year] = dmyMatch;
+            let y = parseInt(year);
+            const m = parseInt(month);
+            const d = parseInt(day);
+            // Convert Buddhist year to Gregorian if > 2400
+            if (y > 2400) y = y - 543;
+            if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            }
+        }
+
+        // Try Excel serial number (days since 1900-01-01)
+        const excelMatch = cleanInput.match(/^(\d{5,6})$/);
+        if (excelMatch) {
+            const serial = parseInt(excelMatch[1]);
+            // Excel's epoch is 1900-01-01 (but has a bug with 1900 being a leap year)
+            const excelEpoch = new Date(1899, 11, 30);
+            const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+            if (!isNaN(date.getTime())) {
+                return date.toISOString().split('T')[0];
+            }
+        }
+
+        return null;
+    };
+
+    // Parse custom date input
+    const parseCustomDates = (): { date: string; detail: string; valid: boolean }[] => {
+        if (!customDateInput.trim()) return [];
+
+        const lines = customDateInput.split(/[\n\r,;]+/);
+        const results: { date: string; detail: string; valid: boolean }[] = [];
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            // Try to find a date at the beginning
+            // Support format: "date - description" or "date description" or just "date"
+            const parts = trimmed.split(/\s*[-:]\s*|\s{2,}/, 2);
+
+            if (parts.length >= 2) {
+                const parsedDate = parseDate(parts[0]);
+                if (parsedDate) {
+                    results.push({
+                        date: parsedDate,
+                        detail: parts[1].trim(),
+                        valid: true
+                    });
+                } else {
+                    // Try the whole line as just a date
+                    const dateOnly = parseDate(trimmed);
+                    if (dateOnly) {
+                        results.push({ date: dateOnly, detail: '', valid: true });
+                    } else {
+                        results.push({ date: trimmed, detail: '❌ รูปแบบวันที่ไม่ถูกต้อง', valid: false });
+                    }
+                }
+            } else {
+                // Try the whole line as just a date
+                const parsed = parseDate(trimmed);
+                if (parsed) {
+                    results.push({ date: parsed, detail: '', valid: true });
+                } else {
+                    results.push({ date: trimmed, detail: '❌ รูปแบบวันที่ไม่ถูกต้อง', valid: false });
+                }
+            }
+        }
+
+        return results;
+    };
+
+    // Auto-parse when input changes
+    useEffect(() => {
+        if (importType === 'custom' && customDateInput) {
+            const parsed = parseCustomDates();
+            setParsedCustomDates(parsed);
+        }
+    }, [customDateInput, importType]);
 
     // Preview the import
     const handlePreview = () => {
@@ -299,6 +433,39 @@ export default function BulkImportModal({ isOpen, onClose }: BulkImportModalProp
 
                 if (detail) {
                     preview.push({ date: dateStr, detail, source });
+                }
+            }
+        } else if (importType === 'custom') {
+            // Handle custom date input
+            const parsedDates = parseCustomDates();
+            for (const item of parsedDates) {
+                if (item.valid) {
+                    const [year, month, day] = item.date.split('-');
+                    const monthValue = `${year}-${month}`;
+                    const targetMonth = yearMonths.find(m => m.month === monthValue);
+                    if (targetMonth && !dayExists(targetMonth.id, item.date)) {
+                        let detail = item.detail;
+                        let source = '';
+
+                        // Check for holidays if detail is empty
+                        if (!detail && includeHolidays) {
+                            const holiday = ALL_HOLIDAYS.find(h => h.date === item.date);
+                            if (holiday) {
+                                detail = holiday.name;
+                                source = holiday.source;
+                            }
+                        }
+
+                        // Add weekend marking if still no detail
+                        if (!detail && includeWeekends) {
+                            const date = new Date(item.date);
+                            const dayOfWeek = date.getDay();
+                            if (dayOfWeek === 0) detail = 'วันอาทิตย์';
+                            else if (dayOfWeek === 6) detail = 'วันเสาร์';
+                        }
+
+                        preview.push({ date: item.date, detail, source });
+                    }
                 }
             }
         }
@@ -411,6 +578,51 @@ export default function BulkImportModal({ isOpen, onClose }: BulkImportModalProp
                         daysToCreate.push({ monthId: targetMonth.id, date: dateStr, detail });
                     }
                 }
+            } else if (importType === 'custom') {
+                // Handle custom date input
+                const parsedDates = parseCustomDates();
+                for (const item of parsedDates) {
+                    if (!item.valid) {
+                        failed++;
+                        continue;
+                    }
+
+                    const [year, month, day] = item.date.split('-');
+                    const monthValue = `${year}-${month}`;
+                    const targetMonth = yearMonths.find(m => m.month === monthValue);
+
+                    if (!targetMonth) {
+                        failed++;
+                        continue;
+                    }
+
+                    if (dayExists(targetMonth.id, item.date)) {
+                        skipped++;
+                        continue;
+                    }
+
+                    let detail = item.detail;
+
+                    // Check for holidays if detail is empty
+                    if (!detail && includeHolidays) {
+                        const holiday = ALL_HOLIDAYS.find(h => h.date === item.date);
+                        if (holiday) {
+                            detail = `${holiday.name} (${holiday.source})`;
+                        }
+                    }
+
+                    // Add weekend marking if still no detail
+                    if (!detail && includeWeekends) {
+                        const date = new Date(item.date);
+                        const dayOfWeek = date.getDay();
+                        if (dayOfWeek === 0) detail = 'วันอาทิตย์';
+                        else if (dayOfWeek === 6) detail = 'วันเสาร์';
+                    }
+
+                    if (detail) {
+                        daysToCreate.push({ monthId: targetMonth.id, date: item.date, detail });
+                    }
+                }
             }
 
             // Create days via API
@@ -511,12 +723,13 @@ export default function BulkImportModal({ isOpen, onClose }: BulkImportModalProp
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             📌 รูปแบบการนำเข้า
                         </label>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                             {[
                                 { value: 'daily', label: '📆 รายวัน', desc: 'เลือกช่วงวัน' },
                                 { value: 'weekly', label: '📅 รายสัปดาห์', desc: 'เลือกช่วงสัปดาห์' },
                                 { value: 'monthly', label: '📋 รายเดือน', desc: 'เลือกเดือน' },
                                 { value: 'multi-month', label: '📊 หลายเดือน', desc: 'เลือกหลายเดือน' },
+                                { value: 'custom', label: '📝 กำหนดเอง', desc: 'วาง/พิมพ์วันที่' },
                             ].map((type) => (
                                 <button
                                     key={type.value}
@@ -613,6 +826,67 @@ export default function BulkImportModal({ isOpen, onClose }: BulkImportModalProp
                         </div>
                     )}
 
+                    {/* Custom Date Input (for custom) */}
+                    {importType === 'custom' && (
+                        <div className="bg-blue-50 p-4 rounded-xl space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    📝 วันที่ (รองรับหลายรูปแบบ)
+                                </label>
+                                <textarea
+                                    value={customDateInput}
+                                    onChange={(e) => setCustomDateInput(e.target.value)}
+                                    placeholder={`ตัวอย่างรูปแบบวันที่ที่รองรับ:
+• 2025-02-12 หรือ 2025/02/12 (ISO)
+• 12/02/2025 หรือ 12-02-2025 (DD/MM/YYYY)
+• 12 ก.พ. 2568 หรือ 12 กุมภาพันธ์ 2568 (ไทย)
+• 45243 (เลข Excel serial)
+• 12 ก.พ. 2568 - ประชุมกรม (พร้อมรายละเอียด)`}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent min-h-[180px] font-mono text-sm"
+                                />
+                                <div className="flex gap-2 mt-2 flex-wrap">
+                                    <span className="text-xs bg-white px-2 py-1 rounded border">💡 แยกด้วย: เว้นบรรทัด / comma / semicolon</span>
+                                    <span className="text-xs bg-white px-2 py-1 rounded border">📋 วางจาก Excel/Sheets ได้เลย</span>
+                                </div>
+                            </div>
+
+                            {/* Parsed Dates Preview */}
+                            {parsedCustomDates.length > 0 && (
+                                <div className="bg-white p-3 rounded-lg border border-blue-200">
+                                    <h4 className="font-medium text-blue-700 mb-2 text-sm">
+                                        📋 วันที่ที่แยกวิเคราะห์ได้ ({parsedCustomDates.filter(d => d.valid).length} รายการถูกต้อง)
+                                    </h4>
+                                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                                        {parsedCustomDates.map((item, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`text-xs flex gap-2 items-center p-1 rounded ${
+                                                    item.valid ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
+                                                }`}
+                                            >
+                                                {item.valid ? '✓' : '✗'}
+                                                <span className="font-mono min-w-[90px]">{item.date}</span>
+                                                <span className="flex-1 truncate">{item.detail}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Format Examples */}
+                            <div className="text-xs text-blue-600 bg-blue-100 p-3 rounded-lg">
+                                <strong>รูปแบบที่รองรับ:</strong>
+                                <ul className="mt-1 space-y-0.5 list-disc list-inside">
+                                    <li>ISO: 2025-02-12, 2025/02/12</li>
+                                    <li>ไทย: 12 ก.พ. 2568, 12 กุมภาพันธ์ 2568</li>
+                                    <li>DD/MM/YYYY: 12/02/2568, 12/02/2025</li>
+                                    <li>Excel Serial: 45243 (สำหรับวันที่ 12/02/2025)</li>
+                                    <li>พร้อมรายละเอียด: 12 ก.พ. 2568 - ประชุมกรม</li>
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Options */}
                     <div className="bg-slate-50 p-4 rounded-xl space-y-3">
                         <h4 className="font-medium text-gray-700">⚙️ ตัวเลือกการนำเข้า</h4>
@@ -639,7 +913,10 @@ export default function BulkImportModal({ isOpen, onClose }: BulkImportModalProp
                     {/* Preview Button */}
                     <button
                         onClick={handlePreview}
-                        disabled={importType.includes('month') && selectedMonths.length === 0}
+                        disabled={
+                            (importType.includes('month') && selectedMonths.length === 0) ||
+                            (importType === 'custom' && !customDateInput.trim())
+                        }
                         className="w-full py-2 bg-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-300 transition-all disabled:opacity-50"
                     >
                         👁️ ดูตัวอย่างข้อมูลที่จะนำเข้า
@@ -738,7 +1015,11 @@ export default function BulkImportModal({ isOpen, onClose }: BulkImportModalProp
                 <div className="px-6 py-4 bg-gray-50 border-t flex gap-3 sticky bottom-0">
                     <button
                         onClick={generateDays}
-                        disabled={isLoading || (importType.includes('month') && selectedMonths.length === 0)}
+                        disabled={
+                            isLoading ||
+                            (importType.includes('month') && selectedMonths.length === 0) ||
+                            (importType === 'custom' && !customDateInput.trim())
+                        }
                         className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50"
                     >
                         {isLoading ? '⏳ กำลังนำเข้า...' : '📥 เริ่มนำเข้า'}

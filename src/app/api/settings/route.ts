@@ -4,6 +4,16 @@ import { Settings } from '@/lib/types';
 
 export async function GET() {
     try {
+        // Check if Google credentials are configured
+        if (!SPREADSHEET_ID) {
+            console.log('No SPREADSHEET_ID configured, returning default settings for local dev');
+            return NextResponse.json({
+                schoolName: '',
+                educationOffice: '',
+                schoolLogo: '',
+            });
+        }
+
         const sheets = getSheets();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
@@ -27,14 +37,12 @@ export async function GET() {
         return NextResponse.json(settings);
     } catch (error) {
         console.error('Error fetching settings:', error);
-        return NextResponse.json(
-            {
-                error: 'Failed to fetch settings',
-                details: error instanceof Error ? error.message : 'Unknown error',
-                stack: error instanceof Error ? error.stack : undefined
-            },
-            { status: 500 }
-        );
+        // Return default settings for local development instead of 500 error
+        return NextResponse.json({
+            schoolName: '',
+            educationOffice: '',
+            schoolLogo: '',
+        });
     }
 }
 

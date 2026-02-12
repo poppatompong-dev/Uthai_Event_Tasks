@@ -9,6 +9,12 @@ const monthsThai = [
 
 export async function GET() {
     try {
+        // Check if Google credentials are configured
+        if (!SPREADSHEET_ID) {
+            console.log('No SPREADSHEET_ID configured, returning empty months array for local dev');
+            return NextResponse.json([]);
+        }
+
         const sheets = getSheets();
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
@@ -42,10 +48,8 @@ export async function GET() {
         return NextResponse.json(months);
     } catch (error) {
         console.error('Error fetching months:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch months' },
-            { status: 500 }
-        );
+        // Return empty array for local development instead of 500 error
+        return NextResponse.json([]);
     }
 }
 

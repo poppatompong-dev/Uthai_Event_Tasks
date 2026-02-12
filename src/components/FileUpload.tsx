@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Attachment } from '@/lib/types';
 
 // Import browser-image-compression dynamically
@@ -21,7 +21,25 @@ export default function FileUpload({ onFilesUploaded, existingAttachments = [], 
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStatus, setUploadStatus] = useState('');
     const [dragActive, setDragActive] = useState(false);
+    const [uploadConfig, setUploadConfig] = useState<{ ok: boolean; message: string } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Check upload configuration on mount
+    useEffect(() => {
+        const checkConfig = async () => {
+            try {
+                const response = await fetch('/api/upload', { method: 'HEAD' });
+                if (response.ok || response.status === 405) { // 405 = Method Not Allowed (expected for HEAD)
+                    setUploadConfig({ ok: true, message: 'พร้อมใช้งาน' });
+                } else {
+                    setUploadConfig({ ok: false, message: 'API ไม่พร้อมใช้งาน' });
+                }
+            } catch {
+                setUploadConfig({ ok: false, message: 'ไม่สามารถเชื่อมต่อ API' });
+            }
+        };
+        checkConfig();
+    }, []);
 
     const handleDrag = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -265,6 +283,19 @@ export default function FileUpload({ onFilesUploaded, existingAttachments = [], 
 
     return (
         <div className="space-y-4">
+            {/* Configuration Status */}
+            {uploadConfig && !uploadConfig.ok && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+                    <p className="text-red-700 flex items-center gap-2">
+                        <span>⚠️</span>
+                        <span>สถานะการอัปโหลด: {uploadConfig.message}</span>
+                    </p>
+                    <p className="text-red-600 text-xs mt-1">
+                        กรุณาตรวจสอบการตั้งค่า Environment Variables (GOOGLE_DRIVE_FOLDER_ID, GOOGLE_SERVICE_ACCOUNT_JSON)
+                    </p>
+                </div>
+            )}
+
             {/* Upload Area */}
             <div
                 className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-all ${dragActive
