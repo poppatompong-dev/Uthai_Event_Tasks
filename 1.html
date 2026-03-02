@@ -1,0 +1,265 @@
+// code.gs
+
+const SPREADSHEET_ID = '1Pk9QFlkF0yiUv12GxifD0oRI-uSX-aUCAn2jfHJHmQ0'; // Replace with your Google Sheet ID
+const FOLDER_ID = '1OOb0WQTb9aFcqyp4ETrT9y0yDBqNThMn'; // Replace with your Google Drive Folder ID for logos
+const TIME_ZONE = 'Asia/Bangkok';
+
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('index')
+    .setTitle('ปฎิทินดำเนินงาน/นับวันเรียน')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function createSheets() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+  // Settings sheet
+  let sheet = ss.getSheetByName('Settings');
+  if (!sheet) {
+    sheet = ss.insertSheet('Settings');
+    sheet.appendRow(['Key', 'Value']);
+    sheet.appendRow(['schoolName', 'โรงเรียนบ้านเสยเสย']);
+    sheet.appendRow(['educationOffice', 'สำนักงานเขตพื้นที่การศึกษา เสย เขต 99']);
+    sheet.appendRow(['schoolLogo', '']);
+  }
+
+  // Users sheet
+  sheet = ss.getSheetByName('Users');
+  if (!sheet) {
+    sheet = ss.insertSheet('Users');
+    sheet.appendRow(['ID', 'Username', 'Password', 'Fullname']);
+    sheet.appendRow([Date.now().toString(), 'admin', 'admin123', 'ผู้ดูแลระบบ']);
+  }
+
+  // Years sheet
+  sheet = ss.getSheetByName('Years');
+  if (!sheet) {
+    sheet = ss.insertSheet('Years');
+    sheet.appendRow(['ID', 'Name', 'StartDate', 'EndDate', 'IsCurrent']);
+    const yearId = Date.now().toString();
+    sheet.appendRow([yearId, '2567', '2024-05-16', '2025-03-31', true]);
+  }
+
+  // Months sheet
+  sheet = ss.getSheetByName('Months');
+  if (!sheet) {
+    sheet = ss.insertSheet('Months');
+    sheet.appendRow(['ID', 'YearID', 'Month', 'Name']);
+    const yearsData = ss.getSheetByName('Years').getDataRange().getValues();
+    const yearId = yearsData[1][0]; // First year ID
+    sheet.appendRow([Date.now().toString(), yearId, '2024-05', 'พฤษภาคม 2567']);
+    sheet.appendRow([Date.now().toString() + 1, yearId, '2024-06', 'มิถุนายน 2567']);
+    sheet.appendRow([Date.now().toString() + 2, yearId, '2024-07', 'กรกฎาคม 2567']);
+  }
+
+  // Days sheet
+  sheet = ss.getSheetByName('Days');
+  if (!sheet) {
+    sheet = ss.insertSheet('Days');
+    sheet.appendRow(['ID', 'MonthID', 'Date', 'Entries']);
+  }
+}
+
+function createSampleDays() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const monthsSheet = ss.getSheetByName('Months');
+  const months = monthsSheet.getDataRange().getValues().slice(1).map(row => ({id: row[0], month: row[2]}));
+  const daysSheet = ss.getSheetByName('Days');
+  daysSheet.clearContents();
+  daysSheet.appendRow(['ID', 'MonthID', 'Date', 'Entries']);
+  let days = [];
+
+  // Sample for May 2024
+  const monthMay = months.find(m => m.month === '2024-05');
+  if (monthMay) {
+    for (let i = 1; i <= 15; i++) {
+      const dateStr = `2024-05-${i.toString().padStart(2, '0')}`;
+      const entries = [{id: (Date.now() + Math.random()).toString(), detail: 'ปิดภาคเรียน', responsible: ''}];
+      days.push([ (Date.now() + i).toString(), monthMay.id, dateStr, JSON.stringify(entries) ]);
+    }
+    for (let i = 16; i <= 31; i++) {
+      const dateStr = `2024-05-${i.toString().padStart(2, '0')}`;
+      const date = new Date(2024, 4, i);
+      let detail = '';
+      if (date.getDay() === 0) detail = 'วันอาทิตย์';
+      else if (date.getDay() === 6) detail = 'วันเสาร์';
+      const entries = detail ? [{id: (Date.now() + Math.random()).toString(), detail: detail, responsible: ''}] : [];
+      days.push([ (Date.now() + i).toString(), monthMay.id, dateStr, JSON.stringify(entries) ]);
+    }
+  }
+
+  // Sample for June 2024
+  const monthJune = months.find(m => m.month === '2024-06');
+  if (monthJune) {
+    for (let i = 1; i <= 30; i++) {
+      const dateStr = `2024-06-${i.toString().padStart(2, '0')}`;
+      const date = new Date(2024, 5, i);
+      let detail = '';
+      if (date.getDay() === 0) detail = 'วันอาทิตย์';
+      else if (date.getDay() === 6) detail = 'วันเสาร์';
+      const entries = detail ? [{id: (Date.now() + Math.random()).toString(), detail: detail, responsible: ''}] : [];
+      days.push([ (Date.now() + i + 31).toString(), monthJune.id, dateStr, JSON.stringify(entries) ]);
+    }
+  }
+
+  // Append all days
+  if (days.length > 0) {
+    daysSheet.getRange(daysSheet.getLastRow() + 1, 1, days.length, 4).setValues(days);
+  }
+}
+
+function getSettings() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Settings');
+  if (!sheet) {
+    return {schoolName: 'โรงเรียนบ้านเสยเสย', educationOffice: 'สำนักงานเขตพื้นที่การศึกษา เสย เขต 99', schoolLogo: ''};
+  }
+  const values = sheet.getDataRange().getValues().slice(1);
+  let settings = {};
+  values.forEach(row => {
+    settings[row[0]] = row[1];
+  });
+  return settings;
+}
+
+function saveSettings(settings) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Settings');
+  if (!sheet) return;
+  if (settings.schoolLogo && settings.schoolLogo.startsWith('data:')) {
+    settings.schoolLogo = uploadLogo(settings.schoolLogo);
+  }
+  sheet.clearContents();
+  sheet.appendRow(['Key', 'Value']);
+  Object.entries(settings).forEach(([key, value]) => {
+    sheet.appendRow([key, value]);
+  });
+}
+
+function uploadLogo(base64) {
+  const [, data] = base64.split(',');
+  const contentType = base64.split(';')[0].split(':')[1];
+  const extension = contentType.split('/')[1];
+  const blob = Utilities.newBlob(Utilities.base64Decode(data), contentType, `school_logo.${extension}`);
+  const folder = DriveApp.getFolderById(FOLDER_ID);
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return `https://lh3.googleusercontent.com/d/${file.getId()}`;
+}
+
+function getUsers() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Users');
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getValues().slice(1);
+  return values.map(row => ({
+    id: row[0].toString(),
+    username: row[1],
+    password: row[2],
+    fullname: row[3]
+  }));
+}
+
+function saveUsers(users) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Users');
+  if (!sheet) return;
+  sheet.clearContents();
+  sheet.appendRow(['ID', 'Username', 'Password', 'Fullname']);
+  users.forEach(user => {
+    sheet.appendRow([user.id, user.username, user.password, user.fullname]);
+  });
+}
+
+function getYears() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Years');
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getValues().slice(1);
+  return values.map(row => ({
+  id: row[0].toString(),
+  name: row[1].toString(), // ✅ แปลงเป็น string เสมอ
+  startDate: row[2] instanceof Date ? Utilities.formatDate(row[2], TIME_ZONE, 'yyyy-MM-dd') : row[2],
+  endDate: row[3] instanceof Date ? Utilities.formatDate(row[3], TIME_ZONE, 'yyyy-MM-dd') : row[3],
+  isCurrent: row[4]
+}));
+}
+
+function saveYears(years) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Years');
+  if (!sheet) return;
+  sheet.clearContents();
+  sheet.appendRow(['ID', 'Name', 'StartDate', 'EndDate', 'IsCurrent']);
+  years.forEach(year => {
+    sheet.appendRow([year.id, year.name, year.startDate, year.endDate, year.isCurrent]);
+  });
+}
+
+function getMonths() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Months');
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getValues().slice(1);
+
+  const monthsThai = [
+    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+  ];
+
+  return values.map(row => {
+    let nameValue = row[3];
+    if (row[2] instanceof Date) {
+      const monthIndex = row[2].getMonth(); // 0–11
+      const year = row[2].getFullYear() + 543; // แปลงเป็น พ.ศ.
+      nameValue = `${monthsThai[monthIndex]} ${year}`; // เช่น "พฤษภาคม 2567"
+    } else if (!row[3]) {
+      nameValue = ''; // กรณีไม่มีค่า
+    }
+
+    return {
+      id: row[0].toString(),
+      yearId: row[1].toString(),
+      month: row[2] instanceof Date
+        ? Utilities.formatDate(row[2], Session.getScriptTimeZone(), 'yyyy-MM')
+        : row[2],
+      name: nameValue.toString()
+    };
+  });
+}
+
+
+function saveMonths(months) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Months');
+  if (!sheet) return;
+  sheet.clearContents();
+  sheet.appendRow(['ID', 'YearID', 'Month', 'Name']);
+  months.forEach(month => {
+    sheet.appendRow([month.id, month.yearId, month.month, month.name]);
+  });
+}
+
+function getDays() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Days');
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getValues().slice(1);
+  return values.map(row => ({
+    id: row[0].toString(),
+    monthId: row[1].toString(),
+    date: row[2] instanceof Date ? Utilities.formatDate(row[2], TIME_ZONE, 'yyyy-MM-dd') : row[2],
+    entries: JSON.parse(row[3] || '[]')
+  }));
+}
+
+function saveDays(days) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Days');
+  if (!sheet) return;
+  sheet.clearContents();
+  sheet.appendRow(['ID', 'MonthID', 'Date', 'Entries']);
+  days.forEach(day => {
+    sheet.appendRow([day.id, day.monthId, day.date, JSON.stringify(day.entries)]);
+  });
+}
