@@ -2,16 +2,21 @@
 <!--
   =====================================================
   Uthai Event Calendar - Web Application
-  Version: 1.7.0 (Updated 2026-03-02 10:28+07:00)
+  Version: 1.7.1 (Updated 2026-03-02 11:06+07:00)
   - Fixed Modal layering bugs, enhanced Sweet Alerts.
   - Linked activity table details to open a calendar detail modal.
   - Added full event detailed fields (Time, Location, Dress Code, Remarks).
-  - Enhanced Attachment Indicators (Large, Visible).
-  - Insightful Stats Columns & Totals.
-  - Subtle Watermark & Professional Footer.
-  Last Updated: 2026-03-02 10:28+07:00
+  - Enhanced Edit Multiple Days modal with detailed fields format.
+  - Added fixed public holidays detection upon Month creation.
+  Last Updated: 2026-03-02 11:06+07:00
   =====================================================
   CHANGELOG:
+  v1.7.1 (2026-03-02 11:06+07:00):
+    - Redesigned "Edit Multiple Days" form, now supporting specific field modifications (time, location, etc.).
+    - Implemented empty state clearing for bulk action form inputs.
+    - Added automated inclusion of 12 fixed national public holidays.
+    - Improved Backend Data entry logic for batch editing.
+
   v1.7.0 (2026-03-02 10:28+07:00):
     - Added full event detailed fields (Time, Location, Dress Code, Remarks).
     - Enhanced user feedback with top-level Tailwind-styled Sweet Alerts.
@@ -628,7 +633,7 @@
     </div>
   </div><!-- Sweet Alert -->
   <div id="sweetOverlay" class="overlay"></div>
-  <div id="sweetAlert" class="sweet-alert relative overflow-hidden backdrop-blur-xl bg-white/95 border border-white/20">
+  <div id="sweetAlert" class="sweet-alert overflow-hidden backdrop-blur-xl bg-white/95 border border-white/20">
     <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-400 via-emerald-500 to-teal-400"></div>
     <div id="sweetIcon" class="text-7xl mb-6 flex justify-center drop-shadow-lg" style="animation: bounce 2s infinite;">
     </div>
@@ -1105,300 +1110,342 @@
           class="cancel-modal flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors">ยกเลิก</button>
       </div>
     </div>
-  </div><!-- Edit Multiple Days Modal -->
-  <div id="editMultipleDaysModal" class="modal">
-    <div class="modal-content">
-      <h2 class="text-2xl font-bold mb-6 text-center">แก้ไขหลายวัน</h2>
-      <form id="editMultipleDaysForm"><input type="hidden" id="editMultipleDaysMonthId">
-        <div class="mb-4">
-          <p class="text-gray-600 mb-4">เลือกวันที่ต้องการแก้ไข:</p>
-          <div id="editDaysCheckboxList" class="max-h-48 overflow-y-auto space-y-2 mb-4">
+    <!-- Edit Multiple Days Modal -->
+    <div id="editMultipleDaysModal" class="modal">
+      <div class="modal-content max-w-3xl">
+        <div class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-t-xl -m-8 mb-6">
+          <h2 class="text-2xl font-bold text-center">📝 แก้ไขหลายวันพร้อมกัน</h2>
+        </div>
+        <form id="editMultipleDaysForm"><input type="hidden" id="editMultipleDaysMonthId">
+          <div class="mb-4">
+            <p class="text-gray-600 mb-2 font-medium">1. เลือกวันที่ต้องการแก้ไข:</p>
+            <div id="editDaysCheckboxList"
+              class="max-h-48 overflow-y-auto space-y-2 mb-4 border border-gray-200 p-2 rounded-lg bg-gray-50">
+            </div>
           </div>
-        </div>
-        <div class="mb-6"><label class="block text-sm font-medium mb-2">รายละเอียดใหม่</label> <input type="text"
-            id="newDayDetail"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" required
-            placeholder="กรอกรายละเอียดที่ต้องการเปลี่ยน">
-        </div>
-        <div class="flex gap-2"><button type="submit"
-            class="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors">บันทึกการเปลี่ยนแปลง</button>
-          <button type="button"
-            class="cancel-modal flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors">ยกเลิก</button>
-        </div>
-      </form>
+          <div class="mb-4">
+            <p class="text-indigo-600 mb-4 font-medium bg-indigo-50 p-3 rounded-lg text-sm border border-indigo-100">
+              ℹ️ ข้อมูลในช่องด้านล่างจะถูกนำไป <b>แทนที่</b> ข้อมูลเดิมของทุกวันที่เลือก <b>(หากช่องใดเว้นว่างไว้
+                ข้อมูลเดิมในช่องนั้นจะไม่เปลี่ยนแปลง)</b>
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium mb-1">รายละเอียดกิจกรรมใหม่</label>
+                <input type="text" id="newDayDetail"
+                  class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  placeholder="ระบุกิจกรรมที่จะแก้ไข">
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1">เวลา</label>
+                <input type="text" id="multiDayTime"
+                  class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  placeholder="เช่น 08.00 - 16.30 น.">
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1">สถานที่</label>
+                <input type="text" id="multiDayLocation"
+                  class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  placeholder="เช่น ห้องประชุม...">
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1">การแต่งกาย</label>
+                <input type="text" id="multiDayDressCode"
+                  class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  placeholder="เช่น ชุดสุภาพ">
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1">ผู้รับผิดชอบ</label>
+                <input type="text" id="multiDayResponsible"
+                  class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  placeholder="เช่น นายสมชาย">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium mb-1">หมายเหตุ</label>
+                <input type="text" id="multiDayRemark"
+                  class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  placeholder="นัดหมายเพิ่มเติม">
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-2 mt-6"><button type="submit"
+              class="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-2.5 rounded-lg hover:shadow-lg transition-all font-medium">บันทึกการเปลี่ยนแปลง</button>
+            <button type="button"
+              class="cancel-modal flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition-colors font-medium">ยกเลิก</button>
+          </div>
+        </form>
+      </div>
     </div>
-  </div>
 
-  <!-- index.html - Only the <script></script> part as requested. Place this inside the <body> or where the original script was. The rest of the HTML remains the same as provided. -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-  <script>
-    const defaultConfig = {
-      school_name: "เทศบาลเมืองอุทัยธานี",
-      education_office: "จังหวัดอุทัยธานี"
-    };
-
-    let settings = {};
-    let users = [];
-    let years = [];
-    let months = [];
-    let days = [];
-    let isAdmin = false;
-
-    async function loadAllData() {
-      [settings, users, years, months, days] = await Promise.all([
-        new Promise((resolve, reject) => {
-          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getSettings();
-        }),
-        new Promise((resolve, reject) => {
-          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getUsers();
-        }),
-        new Promise((resolve, reject) => {
-          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getYears();
-        }),
-        new Promise((resolve, reject) => {
-          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getMonths();
-        }),
-        new Promise((resolve, reject) => {
-          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getDays();
-        })
-      ]);
-
-      // เก็บข้อมูลลง cache พร้อม timestamp
-      const cacheData = {
-        settings, users, years, months, days,
-        timestamp: Date.now()
+    <!-- index.html - Only the <script></script> part as requested. Place this inside the <body> or where the original script was. The rest of the HTML remains the same as provided. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script>
+      const defaultConfig = {
+        school_name: "เทศบาลเมืองอุทัยธานี",
+        education_office: "จังหวัดอุทัยธานี"
       };
-      localStorage.setItem('calendarDataCache', JSON.stringify(cacheData));
 
-      // Render ticker for upcoming activities
-      renderUpcomingActivitiesTicker();
-    }
+      let settings = {};
+      let users = [];
+      let years = [];
+      let months = [];
+      let days = [];
+      let isAdmin = false;
 
-    // Performance Optimization: Debounce function
-    function debounce(fn, delay) {
-      let timeout;
-      return (...args) => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => fn(...args), delay);
-      };
-    }
+      async function loadAllData() {
+        [settings, users, years, months, days] = await Promise.all([
+          new Promise((resolve, reject) => {
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getSettings();
+          }),
+          new Promise((resolve, reject) => {
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getUsers();
+          }),
+          new Promise((resolve, reject) => {
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getYears();
+          }),
+          new Promise((resolve, reject) => {
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getMonths();
+          }),
+          new Promise((resolve, reject) => {
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getDays();
+          })
+        ]);
 
-    // Performance Optimization: Throttle function
-    function throttle(fn, limit) {
-      let inThrottle;
-      return (...args) => {
-        if (!inThrottle) {
-          fn(...args);
-          inThrottle = true;
-          setTimeout(() => inThrottle = false, limit);
-        }
-      };
-    }
-
-    // Data Cache utilities
-    function getCachedData() {
-      try {
-        const cached = localStorage.getItem('calendarDataCache');
-        if (cached) {
-          const data = JSON.parse(cached);
-          // Cache valid for 5 minutes
-          if (Date.now() - data.timestamp < 5 * 60 * 1000) {
-            return data;
-          }
-        }
-      } catch (e) {
-        console.warn('Cache read error:', e);
-      }
-      return null;
-    }
-
-    function clearDataCache() {
-      localStorage.removeItem('calendarDataCache');
-    }
-
-    // Refresh Data: bypass cache and reload from server
-    window.refreshAllData = async function () {
-      const icon = document.getElementById('refreshIcon');
-      if (icon) icon.style.animation = 'spin 0.8s linear infinite';
-      clearDataCache();
-      try {
-        await loadAllData();
-        updateYearFilters();
-        renderCalendar();
-        showAlert('สำเร็จ', 'โหลดข้อมูลใหม่เรียบร้อยแล้ว', '✅');
-      } catch (err) {
-        showAlert('ผิดพลาด', 'ไม่สามารถโหลดข้อมูลได้', '❌');
-      } finally {
-        if (icon) icon.style.animation = '';
-      }
-    };
-
-    // Sweet Alert Functions
-    function showAlert(title, message, icon = '✅', buttons = []) {
-      const sweetAlert = document.getElementById('sweetAlert');
-      const sweetOverlay = document.getElementById('sweetOverlay');
-      const sweetTitle = document.getElementById('sweetTitle');
-      const sweetMessage = document.getElementById('sweetMessage');
-      const sweetIcon = document.getElementById('sweetIcon');
-      const sweetButtons = document.getElementById('sweetButtons');
-      sweetTitle.textContent = title;
-      sweetMessage.textContent = message;
-      sweetIcon.textContent = icon;
-
-      sweetButtons.innerHTML = '';
-      if (buttons.length === 0) {
-        const okBtn = document.createElement('button');
-        okBtn.textContent = 'ตกลง';
-        okBtn.className = 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-8 py-2.5 rounded-xl hover:shadow-lg hover:from-teal-600 hover:to-emerald-600 transition-all transform hover:-translate-y-0.5 font-medium';
-        okBtn.onclick = () => {
-          sweetAlert.classList.remove('active');
-          sweetOverlay.classList.remove('active');
+        // เก็บข้อมูลลง cache พร้อม timestamp
+        const cacheData = {
+          settings, users, years, months, days,
+          timestamp: Date.now()
         };
-        sweetButtons.appendChild(okBtn);
-      } else {
-        buttons.forEach(btn => {
-          const button = document.createElement('button');
-          button.textContent = btn.text;
-          button.className = btn.className;
-          button.onclick = () => {
-            sweetAlert.classList.remove('active');
-            sweetOverlay.classList.remove('active');
-            if (btn.onClick) btn.onClick();
-          };
-          sweetButtons.appendChild(button);
-        });
-      }
-      sweetOverlay.classList.add('active');
-      sweetAlert.classList.add('active');
-    }
-    function showConfirm(title, message, onConfirm) {
-      showAlert(title, message, '❓', [
-        {
-          text: 'ยืนยัน',
-          className: 'bg-gradient-to-r from-red-500 to-rose-500 text-white px-8 py-2.5 rounded-xl hover:shadow-lg hover:from-red-600 hover:to-rose-600 transition-all transform hover:-translate-y-0.5 font-medium',
-          onClick: onConfirm
-        },
-        {
-          text: 'ยกเลิก',
-          className: 'bg-white border-2 border-gray-200 text-gray-700 px-8 py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all font-medium'
-        }
-      ]);
-    }
-    // Calendar animation control
-    let calendarAnimation;
+        localStorage.setItem('calendarDataCache', JSON.stringify(cacheData));
 
-    function initCalendarAnimation() {
-      const tops = document.querySelectorAll('.calendar-ctr .top');
-      const bottoms = document.querySelectorAll('.calendar-ctr .bottom');
-
-      calendarAnimation = gsap.timeline({ repeat: -1, paused: true });
-
-      // Animate each calendar page flip
-      tops.forEach((top, index) => {
-        calendarAnimation.to(top, {
-          rotationX: -90,
-          duration: 0.2,
-          ease: "power2.inOut"
-        }, index * 0.1);
-      });
-
-      bottoms.forEach((bottom, index) => {
-        calendarAnimation.to(bottom, {
-          rotationX: 0,
-          duration: 0.2,
-          ease: "power2.inOut"
-        }, index * 0.1 + 0.1);
-      });
-
-      // Scale animation
-      calendarAnimation.to('.calendar-ctr', {
-        scale: 1.1,
-        duration: 1,
-        ease: "power2.inOut",
-        yoyo: true,
-        repeat: 1
-      }, 0);
-    }
-
-    // Initialize when page loads
-    document.addEventListener('DOMContentLoaded', function () {
-      initCalendarAnimation();
-
-      // Performance: Try to load from cache first
-      const cached = getCachedData();
-      if (cached) {
-        // Use cached data immediately for faster initial render
-        settings = cached.settings;
-        users = cached.users;
-        years = cached.years;
-        months = cached.months;
-        days = cached.days;
-
-        // Render with cached data
-        updateYearFilters();
-        updateHeaderAndFooter();
-        renderCalendar();
-
-        // Render ticker from cache
+        // Render ticker for upcoming activities
         renderUpcomingActivitiesTicker();
       }
 
-      // Then load fresh data in background
-      loadAllData().then(() => {
-        updateYearFilters();
-        updateHeaderAndFooter();
-        renderCalendar();
-      });
-    });
-
-    // Update showLoading and hideLoading
-    function showLoading() {
-      document.getElementById('loadingSpinner').style.display = 'flex';
-      if (calendarAnimation) {
-        calendarAnimation.play();
-      }
-    }
-
-    function hideLoading() {
-      document.getElementById('loadingSpinner').style.display = 'none';
-      if (calendarAnimation) {
-        calendarAnimation.pause();
-        calendarAnimation.progress(0); // Reset to start
-      }
-    }
-    // Thai month names
-    const thaiMonths = [
-      'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
-    ];
-    // Function to show calendar day detail modal
-    window.showCalendarDayDetail = function (dateStr, monthId) {
-      const dayData = days.find(d => d.date === dateStr && d.monthId === monthId);
-
-      if (dayData) {
-        showDayDetail(dayData, monthId);
-      } else {
-        // Create a default day data for days without entries
-        const defaultDayData = {
-          date: dateStr,
-          monthId: monthId,
-          entries: []
+      // Performance Optimization: Debounce function
+      function debounce(fn, delay) {
+        let timeout;
+        return (...args) => {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => fn(...args), delay);
         };
-        showDayDetail(defaultDayData, monthId);
       }
-    };
-    // Function to show day detail modal
-    function showDayDetail(dayData, monthId = null) {
-      const detailContent = document.getElementById('dayDetailContent');
-      const entries = dayData.entries || [];
 
-      // เก็บข้อมูลวันไว้สำหรับการแก้ไข
-      const currentDayData = dayData;
-      const currentMonthId = monthId || dayData.monthId;
+      // Performance Optimization: Throttle function
+      function throttle(fn, limit) {
+        let inThrottle;
+        return (...args) => {
+          if (!inThrottle) {
+            fn(...args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+          }
+        };
+      }
 
-      let entriesHtml = '';
-      if (entries.length === 0) {
-        entriesHtml = `
+      // Data Cache utilities
+      function getCachedData() {
+        try {
+          const cached = localStorage.getItem('calendarDataCache');
+          if (cached) {
+            const data = JSON.parse(cached);
+            // Cache valid for 5 minutes
+            if (Date.now() - data.timestamp < 5 * 60 * 1000) {
+              return data;
+            }
+          }
+        } catch (e) {
+          console.warn('Cache read error:', e);
+        }
+        return null;
+      }
+
+      function clearDataCache() {
+        localStorage.removeItem('calendarDataCache');
+      }
+
+      // Refresh Data: bypass cache and reload from server
+      window.refreshAllData = async function () {
+        const icon = document.getElementById('refreshIcon');
+        if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+        clearDataCache();
+        try {
+          await loadAllData();
+          updateYearFilters();
+          renderCalendar();
+          showAlert('สำเร็จ', 'โหลดข้อมูลใหม่เรียบร้อยแล้ว', '✅');
+        } catch (err) {
+          showAlert('ผิดพลาด', 'ไม่สามารถโหลดข้อมูลได้', '❌');
+        } finally {
+          if (icon) icon.style.animation = '';
+        }
+      };
+
+      // Sweet Alert Functions
+      function showAlert(title, message, icon = '✅', buttons = []) {
+        const sweetAlert = document.getElementById('sweetAlert');
+        const sweetOverlay = document.getElementById('sweetOverlay');
+        const sweetTitle = document.getElementById('sweetTitle');
+        const sweetMessage = document.getElementById('sweetMessage');
+        const sweetIcon = document.getElementById('sweetIcon');
+        const sweetButtons = document.getElementById('sweetButtons');
+        sweetTitle.textContent = title;
+        sweetMessage.textContent = message;
+        sweetIcon.textContent = icon;
+
+        sweetButtons.innerHTML = '';
+        if (buttons.length === 0) {
+          const okBtn = document.createElement('button');
+          okBtn.textContent = 'ตกลง';
+          okBtn.className = 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-8 py-2.5 rounded-xl hover:shadow-lg hover:from-teal-600 hover:to-emerald-600 transition-all transform hover:-translate-y-0.5 font-medium';
+          okBtn.onclick = () => {
+            sweetAlert.classList.remove('active');
+            sweetOverlay.classList.remove('active');
+          };
+          sweetButtons.appendChild(okBtn);
+        } else {
+          buttons.forEach(btn => {
+            const button = document.createElement('button');
+            button.textContent = btn.text;
+            button.className = btn.className;
+            button.onclick = () => {
+              sweetAlert.classList.remove('active');
+              sweetOverlay.classList.remove('active');
+              if (btn.onClick) btn.onClick();
+            };
+            sweetButtons.appendChild(button);
+          });
+        }
+        sweetOverlay.classList.add('active');
+        sweetAlert.classList.add('active');
+      }
+      function showConfirm(title, message, onConfirm) {
+        showAlert(title, message, '❓', [
+          {
+            text: 'ยืนยัน',
+            className: 'bg-gradient-to-r from-red-500 to-rose-500 text-white px-8 py-2.5 rounded-xl hover:shadow-lg hover:from-red-600 hover:to-rose-600 transition-all transform hover:-translate-y-0.5 font-medium',
+            onClick: onConfirm
+          },
+          {
+            text: 'ยกเลิก',
+            className: 'bg-white border-2 border-gray-200 text-gray-700 px-8 py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all font-medium'
+          }
+        ]);
+      }
+      // Calendar animation control
+      let calendarAnimation;
+
+      function initCalendarAnimation() {
+        const tops = document.querySelectorAll('.calendar-ctr .top');
+        const bottoms = document.querySelectorAll('.calendar-ctr .bottom');
+
+        calendarAnimation = gsap.timeline({ repeat: -1, paused: true });
+
+        // Animate each calendar page flip
+        tops.forEach((top, index) => {
+          calendarAnimation.to(top, {
+            rotationX: -90,
+            duration: 0.2,
+            ease: "power2.inOut"
+          }, index * 0.1);
+        });
+
+        bottoms.forEach((bottom, index) => {
+          calendarAnimation.to(bottom, {
+            rotationX: 0,
+            duration: 0.2,
+            ease: "power2.inOut"
+          }, index * 0.1 + 0.1);
+        });
+
+        // Scale animation
+        calendarAnimation.to('.calendar-ctr', {
+          scale: 1.1,
+          duration: 1,
+          ease: "power2.inOut",
+          yoyo: true,
+          repeat: 1
+        }, 0);
+      }
+
+      // Initialize when page loads
+      document.addEventListener('DOMContentLoaded', function () {
+        initCalendarAnimation();
+
+        // Performance: Try to load from cache first
+        const cached = getCachedData();
+        if (cached) {
+          // Use cached data immediately for faster initial render
+          settings = cached.settings;
+          users = cached.users;
+          years = cached.years;
+          months = cached.months;
+          days = cached.days;
+
+          // Render with cached data
+          updateYearFilters();
+          updateHeaderAndFooter();
+          renderCalendar();
+
+          // Render ticker from cache
+          renderUpcomingActivitiesTicker();
+        }
+
+        // Then load fresh data in background
+        loadAllData().then(() => {
+          updateYearFilters();
+          updateHeaderAndFooter();
+          renderCalendar();
+        });
+      });
+
+      // Update showLoading and hideLoading
+      function showLoading() {
+        document.getElementById('loadingSpinner').style.display = 'flex';
+        if (calendarAnimation) {
+          calendarAnimation.play();
+        }
+      }
+
+      function hideLoading() {
+        document.getElementById('loadingSpinner').style.display = 'none';
+        if (calendarAnimation) {
+          calendarAnimation.pause();
+          calendarAnimation.progress(0); // Reset to start
+        }
+      }
+      // Thai month names
+      const thaiMonths = [
+        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+      ];
+      // Function to show calendar day detail modal
+      window.showCalendarDayDetail = function (dateStr, monthId) {
+        const dayData = days.find(d => d.date === dateStr && d.monthId === monthId);
+
+        if (dayData) {
+          showDayDetail(dayData, monthId);
+        } else {
+          // Create a default day data for days without entries
+          const defaultDayData = {
+            date: dateStr,
+            monthId: monthId,
+            entries: []
+          };
+          showDayDetail(defaultDayData, monthId);
+        }
+      };
+      // Function to show day detail modal
+      function showDayDetail(dayData, monthId = null) {
+        const detailContent = document.getElementById('dayDetailContent');
+        const entries = dayData.entries || [];
+
+        // เก็บข้อมูลวันไว้สำหรับการแก้ไข
+        const currentDayData = dayData;
+        const currentMonthId = monthId || dayData.monthId;
+
+        let entriesHtml = '';
+        if (entries.length === 0) {
+          entriesHtml = `
         <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 p-4 rounded-xl shadow-sm">
           <div class="flex items-center">
             <div class="bg-green-100 rounded-full p-2 mr-3">
@@ -1416,62 +1463,62 @@
           </div>
         </div>
       `;
-      } else {
-        entriesHtml = entries.map((entry, index) => {
-          const displayDetail = entry.detail && entry.detail !== 'วันราชการปกติ' ? entry.detail : 'วันราชการปกติ';
-          const displayResponsible = entry.responsible && entry.responsible.trim() !== '' ? entry.responsible : '-';
+        } else {
+          entriesHtml = entries.map((entry, index) => {
+            const displayDetail = entry.detail && entry.detail !== 'วันราชการปกติ' ? entry.detail : 'วันราชการปกติ';
+            const displayResponsible = entry.responsible && entry.responsible.trim() !== '' ? entry.responsible : '-';
 
-          // Determine card style based on entry type
-          let cardStyle = 'from-blue-50 to-indigo-50 border-blue-200';
-          let iconBg = 'bg-blue-100';
-          let iconColor = 'text-blue-600';
-          let textColor = 'text-blue-800';
-          let subTextColor = 'text-blue-600';
-          let icon = '📝';
+            // Determine card style based on entry type
+            let cardStyle = 'from-blue-50 to-indigo-50 border-blue-200';
+            let iconBg = 'bg-blue-100';
+            let iconColor = 'text-blue-600';
+            let textColor = 'text-blue-800';
+            let subTextColor = 'text-blue-600';
+            let icon = '📝';
 
-          if (displayDetail.includes('หยุด')) {
-            cardStyle = 'from-red-50 to-pink-50 border-red-200';
-            iconBg = 'bg-red-100';
-            iconColor = 'text-red-600';
-            textColor = 'text-red-800';
-            subTextColor = 'text-red-600';
-            icon = '🏖️';
-          } else if (displayDetail.includes('วันเสาร์') || displayDetail.includes('วันอาทิตย์')) {
-            cardStyle = 'from-orange-50 to-yellow-50 border-orange-200';
-            iconBg = 'bg-orange-100';
-            iconColor = 'text-orange-600';
-            textColor = 'text-orange-800';
-            subTextColor = 'text-orange-600';
-            icon = '🌅';
-          } else if (displayDetail.includes('กิจกรรม') || displayDetail.includes('ประชุม')) {
-            cardStyle = 'from-purple-50 to-violet-50 border-purple-200';
-            iconBg = 'bg-purple-100';
-            iconColor = 'text-purple-600';
-            textColor = 'text-purple-800';
-            subTextColor = 'text-purple-600';
-            icon = '🎯';
-          } else if (displayDetail === 'วันราชการปกติ') {
-            cardStyle = 'from-green-50 to-emerald-50 border-green-200';
-            iconBg = 'bg-green-100';
-            iconColor = 'text-green-600';
-            textColor = 'text-green-800';
-            subTextColor = 'text-green-600';
-            icon = '📚';
-          }
+            if (displayDetail.includes('หยุด')) {
+              cardStyle = 'from-red-50 to-pink-50 border-red-200';
+              iconBg = 'bg-red-100';
+              iconColor = 'text-red-600';
+              textColor = 'text-red-800';
+              subTextColor = 'text-red-600';
+              icon = '🏖️';
+            } else if (displayDetail.includes('วันเสาร์') || displayDetail.includes('วันอาทิตย์')) {
+              cardStyle = 'from-orange-50 to-yellow-50 border-orange-200';
+              iconBg = 'bg-orange-100';
+              iconColor = 'text-orange-600';
+              textColor = 'text-orange-800';
+              subTextColor = 'text-orange-600';
+              icon = '🌅';
+            } else if (displayDetail.includes('กิจกรรม') || displayDetail.includes('ประชุม')) {
+              cardStyle = 'from-purple-50 to-violet-50 border-purple-200';
+              iconBg = 'bg-purple-100';
+              iconColor = 'text-purple-600';
+              textColor = 'text-purple-800';
+              subTextColor = 'text-purple-600';
+              icon = '🎯';
+            } else if (displayDetail === 'วันราชการปกติ') {
+              cardStyle = 'from-green-50 to-emerald-50 border-green-200';
+              iconBg = 'bg-green-100';
+              iconColor = 'text-green-600';
+              textColor = 'text-green-800';
+              subTextColor = 'text-green-600';
+              icon = '📚';
+            }
 
-          // สร้าง HTML สำหรับไฟล์แนบ พร้อม thumbnail gallery
-          let attachmentsHtml = '';
-          if (entry.attachments && entry.attachments.length > 0) {
-            attachmentsHtml = `
+            // สร้าง HTML สำหรับไฟล์แนบ พร้อม thumbnail gallery
+            let attachmentsHtml = '';
+            if (entry.attachments && entry.attachments.length > 0) {
+              attachmentsHtml = `
             <div class="mt-3 pt-3 border-t border-gray-200">
               <p class="text-sm font-medium ${subTextColor} mb-2">
                 <span class="mr-1">📎</span> ไฟล์แนบ (${entry.attachments.length} ไฟล์):
               </p>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 ${entry.attachments.map(att => {
-              const isImage = att.fileName.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i);
-              if (isImage) {
-                return `
+                const isImage = att.fileName.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i);
+                if (isImage) {
+                  return `
                       <a href="${att.fileUrl}" target="_blank" class="block group rounded-lg overflow-hidden border bg-white shadow-sm hover:shadow-md transition-shadow">
                         <div class="relative">
                           <img src="https://lh3.googleusercontent.com/d/${att.fileId}" alt="${att.fileName}" 
@@ -1484,17 +1531,17 @@
                         </div>
                       </a>
                     `;
-              } else {
-                let fileIcon = '📄';
-                if (att.fileName.match(/\.(pdf)$/i)) fileIcon = '📕';
-                else if (att.fileName.match(/\.(doc|docx)$/i)) fileIcon = '📝';
-                else if (att.fileName.match(/\.(xls|xlsx|csv)$/i)) fileIcon = '📊';
-                else if (att.fileName.match(/\.(ppt|pptx)$/i)) fileIcon = '📊';
-                else if (att.fileName.match(/\.(mp4|avi|mov|wmv|mkv)$/i)) fileIcon = '🎬';
-                else if (att.fileName.match(/\.(mp3|wav|ogg)$/i)) fileIcon = '🎵';
-                else if (att.fileName.match(/\.(zip|rar|7z)$/i)) fileIcon = '📦';
+                } else {
+                  let fileIcon = '📄';
+                  if (att.fileName.match(/\.(pdf)$/i)) fileIcon = '📕';
+                  else if (att.fileName.match(/\.(doc|docx)$/i)) fileIcon = '📝';
+                  else if (att.fileName.match(/\.(xls|xlsx|csv)$/i)) fileIcon = '📊';
+                  else if (att.fileName.match(/\.(ppt|pptx)$/i)) fileIcon = '📊';
+                  else if (att.fileName.match(/\.(mp4|avi|mov|wmv|mkv)$/i)) fileIcon = '🎬';
+                  else if (att.fileName.match(/\.(mp3|wav|ogg)$/i)) fileIcon = '🎵';
+                  else if (att.fileName.match(/\.(zip|rar|7z)$/i)) fileIcon = '📦';
 
-                return `
+                  return `
                       <a href="${att.fileUrl}" target="_blank" 
                          class="flex flex-col items-center justify-center p-3 bg-white rounded-lg border hover:bg-blue-50 hover:shadow-md transition-all group h-28">
                         <span class="text-4xl mb-1 group-hover:scale-110 transition-transform">${fileIcon}</span>
@@ -1502,14 +1549,14 @@
                         <span class="text-xs text-blue-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">ดูไฟล์ →</span>
                       </a>
                     `;
-              }
-            }).join('')}
+                }
+              }).join('')}
               </div>
             </div>
           `;
-          }
+            }
 
-          return `
+            return `
           <div class="bg-gradient-to-r ${cardStyle} border p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
             <div class="flex items-start">
               <div class="${iconBg} rounded-full p-2 mr-3 flex-shrink-0">
@@ -1532,11 +1579,11 @@
             </div>
           </div>
         `;
-        }).join('');
-      }
+          }).join('');
+        }
 
-      // สร้างปุ่มแก้ไขสำหรับแอดมิน
-      const adminButtons = isAdmin ? `
+        // สร้างปุ่มแก้ไขสำหรับแอดมิน
+        const adminButtons = isAdmin ? `
       <div class="mt-6 flex justify-center gap-3">
         <button onclick="editDayFromDetail('${currentDayData.id || ''}', '${currentMonthId}', '${currentDayData.date}')" 
                 class="bg-yellow-400 text-white px-6 py-3 rounded-xl hover:bg-yellow-500 transition-all transform hover:scale-105 shadow-lg">
@@ -1545,7 +1592,7 @@
       </div>
     ` : '';
 
-      detailContent.innerHTML = `
+        detailContent.innerHTML = `
       <div class="space-y-6">
         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
           <div class="flex items-center">
@@ -1569,129 +1616,129 @@
         ${adminButtons}
       </div>
     `;
-      document.getElementById('dayDetailModal').classList.add('active');
-    }
-    // Render functions
-    function renderCalendar() {
-      const yearFilter = document.getElementById('yearFilter');
-      const selectedYear = yearFilter.value;
-      const calendarBody = document.getElementById('calendarBody');
+        document.getElementById('dayDetailModal').classList.add('active');
+      }
+      // Render functions
+      function renderCalendar() {
+        const yearFilter = document.getElementById('yearFilter');
+        const selectedYear = yearFilter.value;
+        const calendarBody = document.getElementById('calendarBody');
 
-      const selectedMonths = months.filter(m => {
-        const year = years.find(y => y.id === m.yearId);
-        return year && year.name === selectedYear;
-      });
+        const selectedMonths = months.filter(m => {
+          const year = years.find(y => y.id === m.yearId);
+          return year && year.name === selectedYear;
+        });
 
-      calendarBody.innerHTML = '';
+        calendarBody.innerHTML = '';
 
-      // สร้างสถิติวันราชการสำหรับแต่ละเดือน (ไม่แสดงในตารางแล้ว แต่จะแสดงใน card แยก)
-      const monthStats = [];
+        // สร้างสถิติวันราชการสำหรับแต่ละเดือน (ไม่แสดงในตารางแล้ว แต่จะแสดงใน card แยก)
+        const monthStats = [];
 
-      selectedMonths.forEach(month => {
-        const monthDays = days.filter(d => d.monthId === month.id).sort((a, b) => a.date.localeCompare(b.date));
+        selectedMonths.forEach(month => {
+          const monthDays = days.filter(d => d.monthId === month.id).sort((a, b) => a.date.localeCompare(b.date));
 
-        if (monthDays.length === 0) return;
-        const row = document.createElement('tr');
+          if (monthDays.length === 0) return;
+          const row = document.createElement('tr');
 
-        // Month name cell
-        const monthCell = document.createElement('td');
-        monthCell.className = 'border border-gray-300 px-2 py-2 font-semibold bg-gray-100';
-        const [year, monthNum] = month.month.split('-');
-        const thaiYear = parseInt(year) + 543;
-        monthCell.textContent = `${thaiMonths[parseInt(monthNum) - 1]} ${thaiYear}`;
-        row.appendChild(monthCell);
-        // Day cells (1-31) with colspan for consecutive closed days
-        const daysInMonth = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
-        let workDays = 0;
-        let holidayCount = 0;
-        let weekendCount = 0;
-        let activityCount = 0;
-        let skipDays = new Set(); // Track days to skip due to colspan
-        for (let day = 1; day <= 31; day++) {
-          if (skipDays.has(day)) {
-            continue; // Skip this day as it's part of a colspan
-          }
-          const dayCell = document.createElement('td');
-          dayCell.className = 'border border-gray-300 calendar-cell';
+          // Month name cell
+          const monthCell = document.createElement('td');
+          monthCell.className = 'border border-gray-300 px-2 py-2 font-semibold bg-gray-100';
+          const [year, monthNum] = month.month.split('-');
+          const thaiYear = parseInt(year) + 543;
+          monthCell.textContent = `${thaiMonths[parseInt(monthNum) - 1]} ${thaiYear}`;
+          row.appendChild(monthCell);
+          // Day cells (1-31) with colspan for consecutive closed days
+          const daysInMonth = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
+          let workDays = 0;
+          let holidayCount = 0;
+          let weekendCount = 0;
+          let activityCount = 0;
+          let skipDays = new Set(); // Track days to skip due to colspan
+          for (let day = 1; day <= 31; day++) {
+            if (skipDays.has(day)) {
+              continue; // Skip this day as it's part of a colspan
+            }
+            const dayCell = document.createElement('td');
+            dayCell.className = 'border border-gray-300 calendar-cell';
 
-          if (day <= daysInMonth) {
-            const dateStr = `${year}-${monthNum}-${String(day).padStart(2, '0')}`;
-            const dayData = monthDays.find(d => d.date === dateStr);
+            if (day <= daysInMonth) {
+              const dateStr = `${year}-${monthNum}-${String(day).padStart(2, '0')}`;
+              const dayData = monthDays.find(d => d.date === dateStr);
 
-            if (dayData) {
-              const entries = dayData.entries || [];
-              const hasSpecialEntries = entries.some(entry =>
-                entry.detail &&
-                entry.detail !== 'วันราชการปกติ' &&
-                entry.detail !== 'วันเสาร์' &&
-                entry.detail !== 'วันอาทิตย์'
-              );
-              const hasResponsible = entries.some(entry => entry.responsible && entry.responsible.trim() !== '');
-              const hasAttachments = entries.some(entry => entry.attachments && entry.attachments.length > 0);
-              const attachIcon = hasAttachments ?
-                `<div class="attachment-indicator" title="มีไฟล์แนบ">
+              if (dayData) {
+                const entries = dayData.entries || [];
+                const hasSpecialEntries = entries.some(entry =>
+                  entry.detail &&
+                  entry.detail !== 'วันราชการปกติ' &&
+                  entry.detail !== 'วันเสาร์' &&
+                  entry.detail !== 'วันอาทิตย์'
+                );
+                const hasResponsible = entries.some(entry => entry.responsible && entry.responsible.trim() !== '');
+                const hasAttachments = entries.some(entry => entry.attachments && entry.attachments.length > 0);
+                const attachIcon = hasAttachments ?
+                  `<div class="attachment-indicator" title="มีไฟล์แนบ">
                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 6.187l-5.132 5.132" />
                    </svg>
                  </div>` : '';
 
-              // Check for special day types from entries
-              const hasClosedEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('ปิดราชการ'));
-              const hasSaturdayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('วันเสาร์'));
-              const hasSundayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('วันอาทิตย์'));
-              const hasHolidayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('หยุด'));
-              const hasCompensationEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('สอนชดเชย'));
+                // Check for special day types from entries
+                const hasClosedEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('ปิดราชการ'));
+                const hasSaturdayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('วันเสาร์'));
+                const hasSundayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('วันอาทิตย์'));
+                const hasHolidayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('หยุด'));
+                const hasCompensationEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('สอนชดเชย'));
 
-              if (hasClosedEntry) {
-                // Check for consecutive closed days
-                let consecutiveDays = 1;
-                let currentDay = day + 1;
+                if (hasClosedEntry) {
+                  // Check for consecutive closed days
+                  let consecutiveDays = 1;
+                  let currentDay = day + 1;
 
-                while (currentDay <= daysInMonth) {
-                  const nextDateStr = `${year}-${monthNum}-${String(currentDay).padStart(2, '0')}`;
-                  const nextDayData = monthDays.find(d => d.date === nextDateStr);
+                  while (currentDay <= daysInMonth) {
+                    const nextDateStr = `${year}-${monthNum}-${String(currentDay).padStart(2, '0')}`;
+                    const nextDayData = monthDays.find(d => d.date === nextDateStr);
 
-                  if (nextDayData && nextDayData.entries &&
-                    nextDayData.entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('ปิดราชการ'))) {
-                    consecutiveDays++;
-                    skipDays.add(currentDay);
-                    currentDay++;
-                  } else {
-                    break;
+                    if (nextDayData && nextDayData.entries &&
+                      nextDayData.entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('ปิดราชการ'))) {
+                      consecutiveDays++;
+                      skipDays.add(currentDay);
+                      currentDay++;
+                    } else {
+                      break;
+                    }
                   }
-                }
 
-                dayCell.className += ' closed text-center';
-                dayCell.colSpan = consecutiveDays;
-                holidayCount += consecutiveDays;
+                  dayCell.className += ' closed text-center';
+                  dayCell.colSpan = consecutiveDays;
+                  holidayCount += consecutiveDays;
 
-                // Get the detail from the first closed day entry
-                const closedEntry = entries.find(entry => entry.detail && entry.detail.toLowerCase().includes('ปิดราชการ'));
-                const detailText = closedEntry ? closedEntry.detail : 'ปิดราชการ';
+                  // Get the detail from the first closed day entry
+                  const closedEntry = entries.find(entry => entry.detail && entry.detail.toLowerCase().includes('ปิดราชการ'));
+                  const detailText = closedEntry ? closedEntry.detail : 'ปิดราชการ';
 
-                if (consecutiveDays === 1) {
-                  dayCell.innerHTML = `
+                  if (consecutiveDays === 1) {
+                    dayCell.innerHTML = `
                   <div class="p-2">
                     <div class="font-bold text-sm">${detailText}</div>
                   </div>
                 `;
-                } else {
-                  dayCell.innerHTML = `
+                  } else {
+                    dayCell.innerHTML = `
                   <div class="p-2">
                     <div class="font-bold text-sm">${detailText}</div>
                     <div class="text-xs opacity-90">${consecutiveDays} วัน</div>
                   </div>
                 `;
-                }
+                  }
 
-                // Add click event for closed days
-                dayCell.onclick = () => {
-                  const detailContent = document.getElementById('dayDetailContent');
-                  const startDate = new Date(dayData.date);
-                  const endDate = new Date(startDate);
-                  endDate.setDate(startDate.getDate() + consecutiveDays - 1);
+                  // Add click event for closed days
+                  dayCell.onclick = () => {
+                    const detailContent = document.getElementById('dayDetailContent');
+                    const startDate = new Date(dayData.date);
+                    const endDate = new Date(startDate);
+                    endDate.setDate(startDate.getDate() + consecutiveDays - 1);
 
-                  detailContent.innerHTML = `
+                    detailContent.innerHTML = `
                   <div class="space-y-6">
                     <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
                       <div class="flex items-center">
@@ -1727,129 +1774,129 @@
                     </div>
                   </div>
                 `;
-                  document.getElementById('dayDetailModal').classList.add('active');
-                };
+                    document.getElementById('dayDetailModal').classList.add('active');
+                  };
 
-              } else if (hasSaturdayEntry) {
-                // Check if Saturday has compensatory classes or activities
-                const hasCompensationOrActivity = entries.some(entry => {
-                  const detail = entry.detail || '';
-                  return detail.toLowerCase().includes('สอนชดเชย') ||
-                    detail.toLowerCase().includes('กิจกรรม') ||
-                    (entry.responsible && entry.responsible.trim() !== '');
-                });
+                } else if (hasSaturdayEntry) {
+                  // Check if Saturday has compensatory classes or activities
+                  const hasCompensationOrActivity = entries.some(entry => {
+                    const detail = entry.detail || '';
+                    return detail.toLowerCase().includes('สอนชดเชย') ||
+                      detail.toLowerCase().includes('กิจกรรม') ||
+                      (entry.responsible && entry.responsible.trim() !== '');
+                  });
 
-                if (hasCompensationOrActivity) {
-                  dayCell.className += ' activity-day';
-                  dayCell.innerHTML = `<div class="text-center font-bold">ส*${attachIcon}</div>`;
-                  activityCount++;
+                  if (hasCompensationOrActivity) {
+                    dayCell.className += ' activity-day';
+                    dayCell.innerHTML = `<div class="text-center font-bold">ส*${attachIcon}</div>`;
+                    activityCount++;
+                  } else {
+                    dayCell.className += ' saturday';
+                    dayCell.innerHTML = `<div class="text-center">ส${attachIcon}</div>`;
+                  }
+                  weekendCount++;
+                  dayCell.onclick = () => showDayDetail(dayData);
+                } else if (hasSundayEntry) {
+                  // Check if Sunday has compensatory classes or activities
+                  const hasCompensationOrActivity = entries.some(entry => {
+                    const detail = entry.detail || '';
+                    return detail.toLowerCase().includes('สอนชดเชย') ||
+                      detail.toLowerCase().includes('กิจกรรม') ||
+                      (entry.responsible && entry.responsible.trim() !== '');
+                  });
+
+                  if (hasCompensationOrActivity) {
+                    dayCell.className += ' activity-day';
+                    dayCell.innerHTML = `<div class="text-center font-bold">อา*${attachIcon}</div>`;
+                    activityCount++;
+                  } else {
+                    dayCell.className += ' sunday';
+                    dayCell.innerHTML = `<div class="text-center">อา${attachIcon}</div>`;
+                  }
+                  weekendCount++;
+                  dayCell.onclick = () => showDayDetail(dayData);
+                } else if (hasHolidayEntry) {
+                  dayCell.className += ' holiday';
+                  dayCell.innerHTML = `<div class="text-center">หยุด${attachIcon}</div>`;
+                  dayCell.onclick = () => showDayDetail(dayData);
+                  holidayCount++;
+                } else if (hasCompensationEntry) {
+                  dayCell.innerHTML = `${day}${attachIcon}`;
+                  workDays++;
+                  if (hasSpecialEntries || hasResponsible) {
+                    dayCell.className += ' activity-day';
+                    activityCount++;
+                  }
+                  dayCell.onclick = () => showDayDetail(dayData);
                 } else {
-                  dayCell.className += ' saturday';
-                  dayCell.innerHTML = `<div class="text-center">ส${attachIcon}</div>`;
+                  // วันราชการปกติ หรือ วันที่มีกิจกรรม/ผู้รับผิดชอบ
+                  dayCell.innerHTML = `${day}${attachIcon}`;
+                  workDays++;
+                  if (hasSpecialEntries || hasResponsible) {
+                    dayCell.className += ' activity-day';
+                    activityCount++;
+                  }
+                  dayCell.onclick = () => showDayDetail(dayData);
                 }
-                weekendCount++;
-                dayCell.onclick = () => showDayDetail(dayData);
-              } else if (hasSundayEntry) {
-                // Check if Sunday has compensatory classes or activities
-                const hasCompensationOrActivity = entries.some(entry => {
-                  const detail = entry.detail || '';
-                  return detail.toLowerCase().includes('สอนชดเชย') ||
-                    detail.toLowerCase().includes('กิจกรรม') ||
-                    (entry.responsible && entry.responsible.trim() !== '');
-                });
-
-                if (hasCompensationOrActivity) {
-                  dayCell.className += ' activity-day';
-                  dayCell.innerHTML = `<div class="text-center font-bold">อา*${attachIcon}</div>`;
-                  activityCount++;
-                } else {
-                  dayCell.className += ' sunday';
-                  dayCell.innerHTML = `<div class="text-center">อา${attachIcon}</div>`;
-                }
-                weekendCount++;
-                dayCell.onclick = () => showDayDetail(dayData);
-              } else if (hasHolidayEntry) {
-                dayCell.className += ' holiday';
-                dayCell.innerHTML = `<div class="text-center">หยุด${attachIcon}</div>`;
-                dayCell.onclick = () => showDayDetail(dayData);
-                holidayCount++;
-              } else if (hasCompensationEntry) {
-                dayCell.innerHTML = `${day}${attachIcon}`;
-                workDays++;
-                if (hasSpecialEntries || hasResponsible) {
-                  dayCell.className += ' activity-day';
-                  activityCount++;
-                }
-                dayCell.onclick = () => showDayDetail(dayData);
               } else {
-                // วันราชการปกติ หรือ วันที่มีกิจกรรม/ผู้รับผิดชอบ
-                dayCell.innerHTML = `${day}${attachIcon}`;
-                workDays++;
-                if (hasSpecialEntries || hasResponsible) {
-                  dayCell.className += ' activity-day';
-                  activityCount++;
-                }
-                dayCell.onclick = () => showDayDetail(dayData);
+                dayCell.className += ' bg-gray-100';
+                dayCell.textContent = '';
               }
             } else {
-              dayCell.className += ' bg-gray-100';
+              // Empty cells for days that don't exist in this month
+              dayCell.className += ' bg-gray-50';
               dayCell.textContent = '';
             }
-          } else {
-            // Empty cells for days that don't exist in this month
-            dayCell.className += ' bg-gray-50';
-            dayCell.textContent = '';
+
+            row.appendChild(dayCell);
           }
 
-          row.appendChild(dayCell);
-        }
+          // เก็บสถิติสำหรับแต่ละเดือน (ไม่แสดงในตารางแล้ว)
+          monthStats.push({
+            month: month,
+            workDays: workDays,
+            holidays: holidayCount,
+            weekends: weekendCount,
+            activityDays: activityCount,
+            daysInMonth: daysInMonth,
+            year: parseInt(year),
+            monthNum: parseInt(monthNum)
+          });
 
-        // เก็บสถิติสำหรับแต่ละเดือน (ไม่แสดงในตารางแล้ว)
-        monthStats.push({
-          month: month,
-          workDays: workDays,
-          holidays: holidayCount,
-          weekends: weekendCount,
-          activityDays: activityCount,
-          daysInMonth: daysInMonth,
-          year: parseInt(year),
-          monthNum: parseInt(monthNum)
+          calendarBody.appendChild(row);
         });
 
-        calendarBody.appendChild(row);
-      });
+        // สร้าง Card สรุปสถิติวันราชการ (แสดงแยกจากตาราง)
+        renderWorkDaysStats(monthStats);
 
-      // สร้าง Card สรุปสถิติวันราชการ (แสดงแยกจากตาราง)
-      renderWorkDaysStats(monthStats);
-
-      // Render activities detail tables
-      renderActivitiesDetail();
-    }
-
-    // ฟังก์ชันแสดงสถิติวันราชการแบบ Card
-    function renderWorkDaysStats(monthStats) {
-      const calendarSection = document.getElementById('calendarSection');
-
-      // ลบสถิติเก่าถ้ามี
-      const existingStats = document.getElementById('workDaysStats');
-      if (existingStats) {
-        existingStats.remove();
+        // Render activities detail tables
+        renderActivitiesDetail();
       }
 
-      if (monthStats.length === 0) return;
+      // ฟังก์ชันแสดงสถิติวันราชการแบบ Card
+      function renderWorkDaysStats(monthStats) {
+        const calendarSection = document.getElementById('calendarSection');
 
-      // คำนวณสถิติรวม
-      const totalWorkDays = monthStats.reduce((sum, stat) => sum + stat.workDays, 0);
-      const totalMonths = monthStats.length;
-      const avgWorkDays = Math.round(totalWorkDays / totalMonths);
+        // ลบสถิติเก่าถ้ามี
+        const existingStats = document.getElementById('workDaysStats');
+        if (existingStats) {
+          existingStats.remove();
+        }
 
-      // สร้าง HTML สำหรับ card สถิติ (subtle, collapsible)
-      const totalActivities = monthStats.reduce((sum, stat) => sum + stat.activityDays, 0);
-      const totalHolidays = monthStats.reduce((sum, stat) => sum + stat.holidays + stat.weekends, 0);
-      const totalDaysAll = monthStats.reduce((sum, stat) => sum + stat.daysInMonth, 0);
-      const workPct = totalDaysAll > 0 ? Math.round((totalWorkDays / totalDaysAll) * 100) : 0;
+        if (monthStats.length === 0) return;
 
-      const statsHTML = `
+        // คำนวณสถิติรวม
+        const totalWorkDays = monthStats.reduce((sum, stat) => sum + stat.workDays, 0);
+        const totalMonths = monthStats.length;
+        const avgWorkDays = Math.round(totalWorkDays / totalMonths);
+
+        // สร้าง HTML สำหรับ card สถิติ (subtle, collapsible)
+        const totalActivities = monthStats.reduce((sum, stat) => sum + stat.activityDays, 0);
+        const totalHolidays = monthStats.reduce((sum, stat) => sum + stat.holidays + stat.weekends, 0);
+        const totalDaysAll = monthStats.reduce((sum, stat) => sum + stat.daysInMonth, 0);
+        const workPct = totalDaysAll > 0 ? Math.round((totalWorkDays / totalDaysAll) * 100) : 0;
+
+        const statsHTML = `
       <div id="workDaysStats" class="mt-6">
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <button type="button" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.toggle-arrow').classList.toggle('rotate-180')" 
@@ -1876,11 +1923,11 @@
                 </thead>
                 <tbody class="divide-y divide-gray-50">
                   ${monthStats.map(stat => {
-        const offDays = stat.holidays + stat.weekends;
-        const pct = stat.daysInMonth > 0 ? Math.round((stat.workDays / stat.daysInMonth) * 100) : 0;
-        const pctColor = pct >= 70 ? 'text-green-600' : pct >= 50 ? 'text-yellow-600' : 'text-red-600';
+          const offDays = stat.holidays + stat.weekends;
+          const pct = stat.daysInMonth > 0 ? Math.round((stat.workDays / stat.daysInMonth) * 100) : 0;
+          const pctColor = pct >= 70 ? 'text-green-600' : pct >= 50 ? 'text-yellow-600' : 'text-red-600';
 
-        return `
+          return `
                     <tr class="hover:bg-gray-50 transition-colors">
                       <td class="px-3 py-2 text-gray-700">${stat.month.name}</td>
                       <td class="px-2 py-2 text-center text-gray-500">${stat.daysInMonth}</td>
@@ -1899,7 +1946,7 @@
                       <td class="px-2 py-2 text-center ${pctColor} font-medium text-xs">${pct}%</td>
                     </tr>
                   `;
-      }).join('')}
+        }).join('')}
                   <tr class="bg-gray-100 font-semibold text-gray-700">
                     <td class="px-3 py-2">รวมทั้งปี</td>
                     <td class="px-2 py-2 text-center">${totalDaysAll}</td>
@@ -1919,33 +1966,33 @@
       </div>
     `;
 
-      // เพิ่ม card สถิติหลังตารางปฏิทิน
-      const calendarTable = document.getElementById('calendarTable');
-      if (calendarTable) {
-        calendarTable.insertAdjacentHTML('afterend', statsHTML);
+        // เพิ่ม card สถิติหลังตารางปฏิทิน
+        const calendarTable = document.getElementById('calendarTable');
+        if (calendarTable) {
+          calendarTable.insertAdjacentHTML('afterend', statsHTML);
+        }
       }
-    }
 
-    function renderActivitiesDetail() {
-      const yearFilter = document.getElementById('yearFilter');
-      const selectedYear = yearFilter.value;
-      const activitiesContainer = document.getElementById('activitiesContainer');
+      function renderActivitiesDetail() {
+        const yearFilter = document.getElementById('yearFilter');
+        const selectedYear = yearFilter.value;
+        const activitiesContainer = document.getElementById('activitiesContainer');
 
-      const selectedMonths = months.filter(m => {
-        const year = years.find(y => y.id === m.yearId);
-        return year && year.name === selectedYear;
-      }).sort((a, b) => a.month.localeCompare(b.month));
+        const selectedMonths = months.filter(m => {
+          const year = years.find(y => y.id === m.yearId);
+          return year && year.name === selectedYear;
+        }).sort((a, b) => a.month.localeCompare(b.month));
 
-      activitiesContainer.innerHTML = '';
-      selectedMonths.forEach(month => {
-        const monthDays = days.filter(d => d.monthId === month.id).sort((a, b) => a.date.localeCompare(b.date));
+        activitiesContainer.innerHTML = '';
+        selectedMonths.forEach(month => {
+          const monthDays = days.filter(d => d.monthId === month.id).sort((a, b) => a.date.localeCompare(b.date));
 
-        // Create month calendar for left side
-        const [year, monthNum] = month.month.split('-');
-        const daysInMonth = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
-        const firstDay = new Date(parseInt(year), parseInt(monthNum) - 1, 1).getDay();
+          // Create month calendar for left side
+          const [year, monthNum] = month.month.split('-');
+          const daysInMonth = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
+          const firstDay = new Date(parseInt(year), parseInt(monthNum) - 1, 1).getDay();
 
-        let calendarHTML = `
+          let calendarHTML = `
         <div class="bg-gradient-to-br from-white to-indigo-50 rounded-2xl shadow-xl p-6 border border-indigo-100 hover:shadow-2xl transition-all duration-300">
           <div class="mb-6">
             <div class="flex items-center justify-center mb-3">
@@ -1966,187 +2013,187 @@
             <div class="font-semibold p-2 activities-saturday">ส</div>
       `;
 
-        // Add empty cells for days before the first day of month
-        for (let i = 0; i < firstDay; i++) {
-          calendarHTML += '<div class="p-2"></div>';
-        }
-
-        // Add days of the month
-        for (let day = 1; day <= daysInMonth; day++) {
-          const dateStr = `${year}-${monthNum}-${String(day).padStart(2, '0')}`;
-          const dayData = monthDays.find(d => d.date === dateStr);
-          const date = new Date(parseInt(year), parseInt(monthNum) - 1, day);
-          const dayOfWeek = date.getDay();
-
-          let cellClass = 'p-2 rounded-lg hover:bg-gradient-to-r hover:from-blue-100 hover:to-indigo-100 cursor-pointer transition-all duration-300 hover:scale-110 hover:shadow-lg transform';
-          let textClass = '';
-
-          if (dayData) {
-            const entries = dayData.entries || [];
-            const hasClosedEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('ปิดราชการ'));
-            const hasSaturdayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('วันเสาร์'));
-            const hasSundayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('วันอาทิตย์'));
-            const hasHolidayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('หยุด'));
-            const hasSpecialEntry = entries.some(entry => {
-              const detail = entry.detail || '';
-              return detail &&
-                !detail.toLowerCase().includes('วันราชการปกติ') &&
-                !detail.toLowerCase().includes('วันเสาร์') &&
-                !detail.toLowerCase().includes('วันอาทิตย์') &&
-                !detail.toLowerCase().includes('ปิดราชการ');
-            });
-
-            if (hasClosedEntry) {
-              cellClass += ' bg-gray-400 text-white font-bold';
-            } else if (hasSundayEntry || dayOfWeek === 0) {
-              // Check if Sunday has compensatory classes or activities
-              const hasCompensationOrActivity = entries.some(entry => {
-                const detail = entry.detail || '';
-                return detail.toLowerCase().includes('สอนชดเชย') ||
-                  detail.toLowerCase().includes('กิจกรรม') ||
-                  (entry.responsible && entry.responsible.trim() !== '');
-              });
-
-              if (hasCompensationOrActivity) {
-                cellClass += ' bg-green-400 text-white font-bold'; // Highlight with green
-              } else {
-                cellClass += ' bg-red-400 text-white font-bold';
-              }
-            } else if (hasSaturdayEntry || dayOfWeek === 6) {
-              // Check if Saturday has compensatory classes or activities
-              const hasCompensationOrActivity = entries.some(entry => {
-                const detail = entry.detail || '';
-                return detail.toLowerCase().includes('สอนชดเชย') ||
-                  detail.toLowerCase().includes('กิจกรรม') ||
-                  (entry.responsible && entry.responsible.trim() !== '');
-              });
-
-              if (hasCompensationOrActivity) {
-                cellClass += ' bg-green-400 text-white font-bold'; // Highlight with green
-              } else {
-                cellClass += ' bg-orange-400 text-white font-bold';
-              }
-            } else if (hasHolidayEntry) {
-              cellClass += ' bg-pink-400 text-white font-bold';
-            } else if (hasSpecialEntry) {
-              cellClass += ' bg-green-400 text-white font-bold';
-            } else {
-              cellClass += ' bg-blue-100 text-blue-800 font-medium';
-            }
-          } else {
-            if (dayOfWeek === 0) {
-              textClass = 'text-red-500';
-            } else if (dayOfWeek === 6) {
-              textClass = 'text-orange-500';
-            }
+          // Add empty cells for days before the first day of month
+          for (let i = 0; i < firstDay; i++) {
+            calendarHTML += '<div class="p-2"></div>';
           }
 
-          // Create clickable day cell with event handler
-          const dayId = `day-${month.id}-${day}`;
-          const currentEntries = dayData ? (dayData.entries || []) : [];
-          const hasAttachments = currentEntries.some(entry => entry.attachments && entry.attachments.length > 0);
-          const attachBadge = hasAttachments ?
-            `<div class="attachment-indicator" style="transform: scale(0.8); top: -4px; right: -4px;" title="มีไฟล์แนบ">
+          // Add days of the month
+          for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${monthNum}-${String(day).padStart(2, '0')}`;
+            const dayData = monthDays.find(d => d.date === dateStr);
+            const date = new Date(parseInt(year), parseInt(monthNum) - 1, day);
+            const dayOfWeek = date.getDay();
+
+            let cellClass = 'p-2 rounded-lg hover:bg-gradient-to-r hover:from-blue-100 hover:to-indigo-100 cursor-pointer transition-all duration-300 hover:scale-110 hover:shadow-lg transform';
+            let textClass = '';
+
+            if (dayData) {
+              const entries = dayData.entries || [];
+              const hasClosedEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('ปิดราชการ'));
+              const hasSaturdayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('วันเสาร์'));
+              const hasSundayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('วันอาทิตย์'));
+              const hasHolidayEntry = entries.some(entry => entry.detail && entry.detail.toLowerCase().includes('หยุด'));
+              const hasSpecialEntry = entries.some(entry => {
+                const detail = entry.detail || '';
+                return detail &&
+                  !detail.toLowerCase().includes('วันราชการปกติ') &&
+                  !detail.toLowerCase().includes('วันเสาร์') &&
+                  !detail.toLowerCase().includes('วันอาทิตย์') &&
+                  !detail.toLowerCase().includes('ปิดราชการ');
+              });
+
+              if (hasClosedEntry) {
+                cellClass += ' bg-gray-400 text-white font-bold';
+              } else if (hasSundayEntry || dayOfWeek === 0) {
+                // Check if Sunday has compensatory classes or activities
+                const hasCompensationOrActivity = entries.some(entry => {
+                  const detail = entry.detail || '';
+                  return detail.toLowerCase().includes('สอนชดเชย') ||
+                    detail.toLowerCase().includes('กิจกรรม') ||
+                    (entry.responsible && entry.responsible.trim() !== '');
+                });
+
+                if (hasCompensationOrActivity) {
+                  cellClass += ' bg-green-400 text-white font-bold'; // Highlight with green
+                } else {
+                  cellClass += ' bg-red-400 text-white font-bold';
+                }
+              } else if (hasSaturdayEntry || dayOfWeek === 6) {
+                // Check if Saturday has compensatory classes or activities
+                const hasCompensationOrActivity = entries.some(entry => {
+                  const detail = entry.detail || '';
+                  return detail.toLowerCase().includes('สอนชดเชย') ||
+                    detail.toLowerCase().includes('กิจกรรม') ||
+                    (entry.responsible && entry.responsible.trim() !== '');
+                });
+
+                if (hasCompensationOrActivity) {
+                  cellClass += ' bg-green-400 text-white font-bold'; // Highlight with green
+                } else {
+                  cellClass += ' bg-orange-400 text-white font-bold';
+                }
+              } else if (hasHolidayEntry) {
+                cellClass += ' bg-pink-400 text-white font-bold';
+              } else if (hasSpecialEntry) {
+                cellClass += ' bg-green-400 text-white font-bold';
+              } else {
+                cellClass += ' bg-blue-100 text-blue-800 font-medium';
+              }
+            } else {
+              if (dayOfWeek === 0) {
+                textClass = 'text-red-500';
+              } else if (dayOfWeek === 6) {
+                textClass = 'text-orange-500';
+              }
+            }
+
+            // Create clickable day cell with event handler
+            const dayId = `day-${month.id}-${day}`;
+            const currentEntries = dayData ? (dayData.entries || []) : [];
+            const hasAttachments = currentEntries.some(entry => entry.attachments && entry.attachments.length > 0);
+            const attachBadge = hasAttachments ?
+              `<div class="attachment-indicator" style="transform: scale(0.8); top: -4px; right: -4px;" title="มีไฟล์แนบ">
                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 6.187l-5.132 5.132" />
                  </svg>
                </div>` : '';
 
-          calendarHTML += `<div class="${cellClass} ${textClass} relative" id="${dayId}" onclick="showCalendarDayDetail('${dateStr}', '${month.id}')">
+            calendarHTML += `<div class="${cellClass} ${textClass} relative" id="${dayId}" onclick="showCalendarDayDetail('${dateStr}', '${month.id}')">
               ${day}
               ${attachBadge}
             </div>`;
-        }
+          }
 
-        calendarHTML += '</div></div>';
+          calendarHTML += '</div></div>';
 
-        // Filter days that have special activities or responsibilities for table
-        const specialDays = monthDays.filter(day => {
-          const entries = day.entries || [];
-          return entries.some(entry => {
-            const detail = entry.detail || '';
-            const responsible = entry.responsible || '';
+          // Filter days that have special activities or responsibilities for table
+          const specialDays = monthDays.filter(day => {
+            const entries = day.entries || [];
+            return entries.some(entry => {
+              const detail = entry.detail || '';
+              const responsible = entry.responsible || '';
 
-            const isSpecialDay = detail &&
-              !detail.toLowerCase().includes('วันราชการปกติ') &&
-              !detail.toLowerCase().includes('วันเสาร์') &&
-              !detail.toLowerCase().includes('วันอาทิตย์') &&
-              !detail.toLowerCase().includes('ปิดราชการ');
+              const isSpecialDay = detail &&
+                !detail.toLowerCase().includes('วันราชการปกติ') &&
+                !detail.toLowerCase().includes('วันเสาร์') &&
+                !detail.toLowerCase().includes('วันอาทิตย์') &&
+                !detail.toLowerCase().includes('ปิดราชการ');
 
-            const hasResponsible = responsible && responsible.trim() !== '';
-            const isHoliday = detail && detail.toLowerCase().includes('หยุด');
+              const hasResponsible = responsible && responsible.trim() !== '';
+              const isHoliday = detail && detail.toLowerCase().includes('หยุด');
 
-            return isSpecialDay || hasResponsible || isHoliday;
+              return isSpecialDay || hasResponsible || isHoliday;
+            });
           });
-        });
-        // Create table for right side
-        let tableRows = '';
-        let rowIndex = 0;
-        specialDays.forEach(day => {
-          const entries = day.entries || [];
-          entries.forEach(entry => {
-            const detail = entry.detail || '';
-            const responsible = entry.responsible || '';
+          // Create table for right side
+          let tableRows = '';
+          let rowIndex = 0;
+          specialDays.forEach(day => {
+            const entries = day.entries || [];
+            entries.forEach(entry => {
+              const detail = entry.detail || '';
+              const responsible = entry.responsible || '';
 
-            const isSpecialDay = detail &&
-              !detail.toLowerCase().includes('วันราชการปกติ') &&
-              !detail.toLowerCase().includes('วันเสาร์') &&
-              !detail.toLowerCase().includes('วันอาทิตย์') &&
-              !detail.toLowerCase().includes('ปิดราชการ');
+              const isSpecialDay = detail &&
+                !detail.toLowerCase().includes('วันราชการปกติ') &&
+                !detail.toLowerCase().includes('วันเสาร์') &&
+                !detail.toLowerCase().includes('วันอาทิตย์') &&
+                !detail.toLowerCase().includes('ปิดราชการ');
 
-            const hasResponsible = responsible && responsible.trim() !== '';
-            const isHoliday = detail && detail.toLowerCase().includes('หยุด');
+              const hasResponsible = responsible && responsible.trim() !== '';
+              const isHoliday = detail && detail.toLowerCase().includes('หยุด');
 
-            if (isSpecialDay || hasResponsible || isHoliday) {
-              const displayDetail = detail || '-';
-              const displayResponsible = responsible || '-';
-              const dateDisplay = new Date(day.date).toLocaleDateString('th-TH', {
-                day: 'numeric',
-                month: 'short'
-              });
+              if (isSpecialDay || hasResponsible || isHoliday) {
+                const displayDetail = detail || '-';
+                const displayResponsible = responsible || '-';
+                const dateDisplay = new Date(day.date).toLocaleDateString('th-TH', {
+                  day: 'numeric',
+                  month: 'short'
+                });
 
-              let rowClass = 'border-b border-gray-100 hover:bg-gradient-to-r transition-all duration-200 cursor-pointer';
-              let dateClass = 'px-4 py-3 text-center font-bold text-sm';
-              let detailClass = 'px-4 py-3 font-medium';
-              let responsibleClass = 'px-4 py-3';
-              let icon = '📋';
+                let rowClass = 'border-b border-gray-100 hover:bg-gradient-to-r transition-all duration-200 cursor-pointer';
+                let dateClass = 'px-4 py-3 text-center font-bold text-sm';
+                let detailClass = 'px-4 py-3 font-medium';
+                let responsibleClass = 'px-4 py-3';
+                let icon = '📋';
 
-              if (isHoliday) {
-                rowClass += ' hover:from-red-50 hover:to-pink-50';
-                dateClass += ' bg-red-100 text-red-800';
-                detailClass += ' text-red-700';
-                responsibleClass += ' text-red-600';
-                icon = '🏖️';
-              } else if (displayDetail.includes('กิจกรรม') || displayDetail.includes('ประชุม')) {
-                rowClass += ' hover:from-purple-50 hover:to-violet-50';
-                dateClass += ' bg-purple-100 text-purple-800';
-                detailClass += ' text-purple-700';
-                responsibleClass += ' text-purple-600';
-                icon = '🎯';
-              } else if (displayDetail.includes('สอบ') || displayDetail.includes('ทดสอบ')) {
-                rowClass += ' hover:from-orange-50 hover:to-yellow-50';
-                dateClass += ' bg-orange-100 text-orange-800';
-                detailClass += ' text-orange-700';
-                responsibleClass += ' text-orange-600';
-                icon = '📝';
-              } else {
-                rowClass += ' hover:from-blue-50 hover:to-indigo-50';
-                dateClass += ' bg-blue-100 text-blue-800';
-                detailClass += ' text-blue-700';
-                responsibleClass += ' text-blue-600';
-                icon = '📚';
-              }
+                if (isHoliday) {
+                  rowClass += ' hover:from-red-50 hover:to-pink-50';
+                  dateClass += ' bg-red-100 text-red-800';
+                  detailClass += ' text-red-700';
+                  responsibleClass += ' text-red-600';
+                  icon = '🏖️';
+                } else if (displayDetail.includes('กิจกรรม') || displayDetail.includes('ประชุม')) {
+                  rowClass += ' hover:from-purple-50 hover:to-violet-50';
+                  dateClass += ' bg-purple-100 text-purple-800';
+                  detailClass += ' text-purple-700';
+                  responsibleClass += ' text-purple-600';
+                  icon = '🎯';
+                } else if (displayDetail.includes('สอบ') || displayDetail.includes('ทดสอบ')) {
+                  rowClass += ' hover:from-orange-50 hover:to-yellow-50';
+                  dateClass += ' bg-orange-100 text-orange-800';
+                  detailClass += ' text-orange-700';
+                  responsibleClass += ' text-orange-600';
+                  icon = '📝';
+                } else {
+                  rowClass += ' hover:from-blue-50 hover:to-indigo-50';
+                  dateClass += ' bg-blue-100 text-blue-800';
+                  detailClass += ' text-blue-700';
+                  responsibleClass += ' text-blue-600';
+                  icon = '📚';
+                }
 
-              if (rowIndex % 2 === 1) {
-                rowClass += ' bg-gray-25';
-              }
+                if (rowIndex % 2 === 1) {
+                  rowClass += ' bg-gray-25';
+                }
 
-              const hasAttachments = entry.attachments && entry.attachments.length > 0;
-              const attachmentIndicator = hasAttachments
-                ? `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800" title="มี ${entry.attachments.length} ไฟล์แนบ">📎 ${entry.attachments.length}</span>`
-                : '';
+                const hasAttachments = entry.attachments && entry.attachments.length > 0;
+                const attachmentIndicator = hasAttachments
+                  ? `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800" title="มี ${entry.attachments.length} ไฟล์แนบ">📎 ${entry.attachments.length}</span>`
+                  : '';
 
-              tableRows += `
+                tableRows += `
               <tr class="${rowClass}" onclick="showCalendarDayDetail('${day.date}', '${month.id}')">
                 <td class="${dateClass}">
                   <div class="flex items-center justify-center">
@@ -2168,11 +2215,11 @@
                 </td>
               </tr>
             `;
-              rowIndex++;
-            }
+                rowIndex++;
+              }
+            });
           });
-        });
-        const tableHTML = `
+          const tableHTML = `
         <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-xl p-6 border border-emerald-100 hover:shadow-2xl transition-all duration-300">
           <div class="mb-6">
             <div class="flex items-center justify-center mb-3">
@@ -2234,10 +2281,10 @@
           </div>
         </div>
       `;
-        // Create combined layout for each month
-        const monthContainer = document.createElement('div');
-        monthContainer.className = 'grid grid-cols-1 lg:grid-cols-2 gap-8 p-2';
-        monthContainer.innerHTML = `
+          // Create combined layout for each month
+          const monthContainer = document.createElement('div');
+          monthContainer.className = 'grid grid-cols-1 lg:grid-cols-2 gap-8 p-2';
+          monthContainer.innerHTML = `
         <div class="order-1">
           ${calendarHTML}
         </div>
@@ -2246,10 +2293,10 @@
         </div>
       `;
 
-        activitiesContainer.appendChild(monthContainer);
-      });
-      if (activitiesContainer.children.length === 0) {
-        activitiesContainer.innerHTML = `
+          activitiesContainer.appendChild(monthContainer);
+        });
+        if (activitiesContainer.children.length === 0) {
+          activitiesContainer.innerHTML = `
         <div class="text-center py-20">
           <div class="bg-gradient-to-br from-white via-indigo-50 to-purple-50 rounded-3xl p-16 shadow-2xl border border-indigo-100 hover:shadow-3xl transition-all duration-500">
             <div class="flex flex-col items-center">
@@ -2270,12 +2317,12 @@
           </div>
         </div>
       `;
+        }
       }
-    }
-    function renderUsersTable() {
-      const tbody = document.getElementById('usersTableBody');
+      function renderUsersTable() {
+        const tbody = document.getElementById('usersTableBody');
 
-      tbody.innerHTML = users.map(user => `
+        tbody.innerHTML = users.map(user => `
       <tr class="border-b hover:bg-gray-50">
         <td class="px-4 py-3">${user.username}</td>
         <td class="px-4 py-3">${user.fullname}</td>
@@ -2285,15 +2332,15 @@
         </td>
       </tr>
     `).join('');
-    }
-    function renderYearsTable() {
-      const tbody = document.getElementById('yearsTableBody');
+      }
+      function renderYearsTable() {
+        const tbody = document.getElementById('yearsTableBody');
 
-      tbody.innerHTML = years.map(year => {
-        const startDate = year.startDate ? new Date(year.startDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
-        const endDate = year.endDate ? new Date(year.endDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
+        tbody.innerHTML = years.map(year => {
+          const startDate = year.startDate ? new Date(year.startDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
+          const endDate = year.endDate ? new Date(year.endDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
 
-        return `
+          return `
       <tr class="border-b hover:bg-gray-50">
         <td class="px-4 py-3">${year.name}</td>
         <td class="px-4 py-3">${startDate} - ${endDate}</td>
@@ -2306,24 +2353,24 @@
         </td>
       </tr>
       `;
-      }).join('');
-    }
-    function renderMonthsContainer() {
-      const container = document.getElementById('monthsContainer');
-      const yearFilter = document.getElementById('adminYearFilter');
-      const selectedYear = yearFilter.value;
-
-      const selectedYearObj = years.find(y => y.name === selectedYear);
-      if (!selectedYearObj) {
-        container.innerHTML = '<p class="text-gray-500">กรุณาเลือกปีงบประมาณ</p>';
-        return;
+        }).join('');
       }
-      const selectedMonths = months.filter(m => m.yearId === selectedYearObj.id);
+      function renderMonthsContainer() {
+        const container = document.getElementById('monthsContainer');
+        const yearFilter = document.getElementById('adminYearFilter');
+        const selectedYear = yearFilter.value;
 
-      container.innerHTML = selectedMonths.map(month => {
-        const monthDays = days.filter(d => d.monthId === month.id).sort((a, b) => a.date.localeCompare(b.date));
+        const selectedYearObj = years.find(y => y.name === selectedYear);
+        if (!selectedYearObj) {
+          container.innerHTML = '<p class="text-gray-500">กรุณาเลือกปีงบประมาณ</p>';
+          return;
+        }
+        const selectedMonths = months.filter(m => m.yearId === selectedYearObj.id);
 
-        return `
+        container.innerHTML = selectedMonths.map(month => {
+          const monthDays = days.filter(d => d.monthId === month.id).sort((a, b) => a.date.localeCompare(b.date));
+
+          return `
         <div class="bg-gray-50 rounded-lg p-4 transition-all duration-300">
           <div class="flex justify-between items-center mb-4 cursor-pointer hover:bg-gray-100 p-2 rounded-lg transition-colors" onclick="toggleMonth('${month.id}')">
             <div class="flex items-center">
@@ -2349,16 +2396,16 @@
                 </thead>
                 <tbody>
                   ${monthDays.map(day => {
-          const entries = day.entries || [];
-          const entriesDisplay = entries.length > 0
-            ? entries.map(entry => {
-              const detail = entry.detail && entry.detail !== 'วันราชการปกติ' ? entry.detail : '';
-              const responsible = entry.responsible || '';
-              return detail || responsible ? `${detail}${responsible ? ` (${responsible})` : ''}` : '';
-            }).filter(text => text).join(', ')
-            : '';
+            const entries = day.entries || [];
+            const entriesDisplay = entries.length > 0
+              ? entries.map(entry => {
+                const detail = entry.detail && entry.detail !== 'วันราชการปกติ' ? entry.detail : '';
+                const responsible = entry.responsible || '';
+                return detail || responsible ? `${detail}${responsible ? ` (${responsible})` : ''}` : '';
+              }).filter(text => text).join(', ')
+              : '';
 
-          return `
+            return `
                     <tr class="border-b hover:bg-gray-50">
                       <td class="px-4 py-2">${new Date(day.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
                       <td class="px-4 py-2" colspan="2">${entriesDisplay}</td>
@@ -2368,222 +2415,222 @@
                       </td>
                     </tr>
                     `;
-        }).join('')}
+          }).join('')}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
       `;
-      }).join('');
-    }
-
-    // Toggle month collapse
-    window.toggleMonth = function (monthId) {
-      const content = document.getElementById(`month-content-${monthId}`);
-      const icon = document.getElementById(`month-icon-${monthId}`);
-
-      if (content.style.maxHeight === '0px') {
-        // Expand
-        content.style.maxHeight = '2000px';
-        content.style.opacity = '1';
-        content.style.marginTop = '0';
-        icon.style.transform = 'rotate(0deg)';
-      } else {
-        // Collapse
-        content.style.maxHeight = '0px';
-        content.style.opacity = '0';
-        content.style.marginTop = '-10px'; // Slight pull up for smoother feel
-        icon.style.transform = 'rotate(-90deg)';
+        }).join('');
       }
-    };
-    // User management
-    window.editUser = function (id) {
-      const user = users.find(u => u.id === id);
-      if (!user) return;
-      document.getElementById('userModalTitle').textContent = 'แก้ไขผู้ใช้งาน';
-      document.getElementById('userId').value = user.id;
-      document.getElementById('userUsername').value = user.username;
-      document.getElementById('userPassword').value = user.password;
-      document.getElementById('userFullname').value = user.fullname;
-      document.getElementById('userModal').classList.add('active');
-    };
-    window.deleteUser = function (id) {
-      showConfirm('ยืนยันการลบ', 'คุณต้องการลบผู้ใช้งานนี้หรือไม่?', () => {
-        showLoading();
-        const newUsers = users.filter(u => u.id !== id);
-        google.script.run.withSuccessHandler(() => {
-          loadAllData().then(() => {
-            hideLoading();
-            showAlert('สำเร็จ', 'ลบผู้ใช้งานเรียบร้อยแล้ว', '✅');
-            clearDataCache(); // Clear cache after data change
-          });
-        }).saveUsers(newUsers);
-      });
-    };
-    // Year management
-    window.editYear = function (id) {
-      const year = years.find(y => y.id === id);
-      if (!year) return;
-      document.getElementById('yearModalTitle').textContent = 'แก้ไขปีงบประมาณ';
-      document.getElementById('yearId').value = year.id;
-      document.getElementById('yearName').value = year.name;
-      document.getElementById('yearStartDate').value = year.startDate || '';
-      document.getElementById('yearEndDate').value = year.endDate || '';
-      document.getElementById('yearCurrent').checked = year.isCurrent;
-      document.getElementById('yearModal').classList.add('active');
-    };
-    window.deleteYear = function (id) {
-      showConfirm('ยืนยันการลบ', 'คุณต้องการลบปีงบประมาณนี้หรือไม่?', () => {
-        showLoading();
-        const newYears = years.filter(y => y.id !== id);
-        // Filter related months and days
-        const newMonths = months.filter(m => m.yearId !== id);
-        const monthIdsToDelete = months.filter(m => m.yearId === id).map(m => m.id);
-        const newDays = days.filter(d => !monthIdsToDelete.includes(d.monthId));
-        google.script.run.withSuccessHandler(() => {
-          loadAllData().then(() => {
-            renderYearsTable();
-            updateYearFilters();
-            hideLoading();
-            showAlert('สำเร็จ', 'ลบปีงบประมาณเรียบร้อยแล้ว', '✅');
-            clearDataCache(); // Clear cache after data change
-          });
-        }).saveYears(newYears);
-        google.script.run.saveMonths(newMonths);
-        google.script.run.saveDays(newDays);
-      });
-    };
-    // Month management
-    window.deleteMonth = function (id) {
-      showConfirm('ยืนยันการลบ', 'คุณต้องการลบเดือนนี้หรือไม่?', () => {
-        showLoading();
 
-        google.script.run.withSuccessHandler((result) => {
-          if (result.success) {
+      // Toggle month collapse
+      window.toggleMonth = function (monthId) {
+        const content = document.getElementById(`month-content-${monthId}`);
+        const icon = document.getElementById(`month-icon-${monthId}`);
+
+        if (content.style.maxHeight === '0px') {
+          // Expand
+          content.style.maxHeight = '2000px';
+          content.style.opacity = '1';
+          content.style.marginTop = '0';
+          icon.style.transform = 'rotate(0deg)';
+        } else {
+          // Collapse
+          content.style.maxHeight = '0px';
+          content.style.opacity = '0';
+          content.style.marginTop = '-10px'; // Slight pull up for smoother feel
+          icon.style.transform = 'rotate(-90deg)';
+        }
+      };
+      // User management
+      window.editUser = function (id) {
+        const user = users.find(u => u.id === id);
+        if (!user) return;
+        document.getElementById('userModalTitle').textContent = 'แก้ไขผู้ใช้งาน';
+        document.getElementById('userId').value = user.id;
+        document.getElementById('userUsername').value = user.username;
+        document.getElementById('userPassword').value = user.password;
+        document.getElementById('userFullname').value = user.fullname;
+        document.getElementById('userModal').classList.add('active');
+      };
+      window.deleteUser = function (id) {
+        showConfirm('ยืนยันการลบ', 'คุณต้องการลบผู้ใช้งานนี้หรือไม่?', () => {
+          showLoading();
+          const newUsers = users.filter(u => u.id !== id);
+          google.script.run.withSuccessHandler(() => {
             loadAllData().then(() => {
-              renderMonthsContainer();
               hideLoading();
-              showAlert('สำเร็จ', 'ลบเดือนเรียบร้อยแล้ว', '✅');
+              showAlert('สำเร็จ', 'ลบผู้ใช้งานเรียบร้อยแล้ว', '✅');
               clearDataCache(); // Clear cache after data change
             });
-          }
-        }).withFailureHandler((error) => {
-          hideLoading();
-          showAlert('ผิดพลาด', 'ไม่สามารถลบเดือนได้', '❌');
-        }).deleteMonth(id);
-      });
-    };
-
-    window.addDaysForMonth = function (monthId) {
-      showLoading();
-      const month = months.find(m => m.id === monthId);
-      if (!month) return;
-
-      google.script.run.withSuccessHandler((result) => {
-        loadAllData().then(() => {
-          renderMonthsContainer();
-          hideLoading();
-          if (result.success) {
-            showAlert('สำเร็จ', `เพิ่มวันทั้งเดือน ${month.name} เรียบร้อยแล้ว (${result.count} วัน)`, '✅');
-            clearDataCache(); // Clear cache after data change
-          }
+          }).saveUsers(newUsers);
         });
-      }).withFailureHandler((error) => {
-        hideLoading();
-        showAlert('ผิดพลาด', 'ไม่สามารถเพิ่มวันทั้งเดือนได้', '❌');
-      }).addDaysForMonth(monthId, month.month);
-    };
+      };
+      // Year management
+      window.editYear = function (id) {
+        const year = years.find(y => y.id === id);
+        if (!year) return;
+        document.getElementById('yearModalTitle').textContent = 'แก้ไขปีงบประมาณ';
+        document.getElementById('yearId').value = year.id;
+        document.getElementById('yearName').value = year.name;
+        document.getElementById('yearStartDate').value = year.startDate || '';
+        document.getElementById('yearEndDate').value = year.endDate || '';
+        document.getElementById('yearCurrent').checked = year.isCurrent;
+        document.getElementById('yearModal').classList.add('active');
+      };
+      window.deleteYear = function (id) {
+        showConfirm('ยืนยันการลบ', 'คุณต้องการลบปีงบประมาณนี้หรือไม่?', () => {
+          showLoading();
+          const newYears = years.filter(y => y.id !== id);
+          // Filter related months and days
+          const newMonths = months.filter(m => m.yearId !== id);
+          const monthIdsToDelete = months.filter(m => m.yearId === id).map(m => m.id);
+          const newDays = days.filter(d => !monthIdsToDelete.includes(d.monthId));
+          google.script.run.withSuccessHandler(() => {
+            loadAllData().then(() => {
+              renderYearsTable();
+              updateYearFilters();
+              hideLoading();
+              showAlert('สำเร็จ', 'ลบปีงบประมาณเรียบร้อยแล้ว', '✅');
+              clearDataCache(); // Clear cache after data change
+            });
+          }).saveYears(newYears);
+          google.script.run.saveMonths(newMonths);
+          google.script.run.saveDays(newDays);
+        });
+      };
+      // Month management
+      window.deleteMonth = function (id) {
+        showConfirm('ยืนยันการลบ', 'คุณต้องการลบเดือนนี้หรือไม่?', () => {
+          showLoading();
 
-    // Day management
-    window.editMultipleDays = function (monthId) {
-      const month = months.find(m => m.id === monthId);
-      if (!month) return;
+          google.script.run.withSuccessHandler((result) => {
+            if (result.success) {
+              loadAllData().then(() => {
+                renderMonthsContainer();
+                hideLoading();
+                showAlert('สำเร็จ', 'ลบเดือนเรียบร้อยแล้ว', '✅');
+                clearDataCache(); // Clear cache after data change
+              });
+            }
+          }).withFailureHandler((error) => {
+            hideLoading();
+            showAlert('ผิดพลาด', 'ไม่สามารถลบเดือนได้', '❌');
+          }).deleteMonth(id);
+        });
+      };
 
-      const monthDays = days.filter(d => d.monthId === monthId).sort((a, b) => a.date.localeCompare(b.date));
-
-      document.getElementById('editMultipleDaysMonthId').value = monthId;
-      const checkboxList = document.getElementById('editDaysCheckboxList');
-
-      checkboxList.innerHTML = monthDays.map(day => {
-        const entries = day.entries || [];
-        const entriesDisplay = entries.length > 0
-          ? entries.map(entry => {
-            const detail = entry.detail && entry.detail !== 'วันราชการปกติ' ? entry.detail : 'วันราชการปกติ';
-            const responsible = entry.responsible && entry.responsible.trim() !== '' ? ` (${entry.responsible})` : '';
-            return `${detail}${responsible}`;
-          }).join(', ')
-          : 'วันราชการปกติ';
-
-        return `
-    <label class="flex items-center p-2 hover:bg-gray-100 rounded">
-      <input type="checkbox" value="${day.id}" class="day-checkbox mr-3">
-      <span class="flex-1">${new Date(day.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })} - ${entriesDisplay}</span>
-    </label>
-    `;
-      }).join('');
-
-      document.getElementById('newDayDetail').value = '';
-      document.getElementById('editMultipleDaysModal').classList.add('active');
-    };
-    window.deleteDay = function (id) {
-      showConfirm('ยืนยันการลบ', 'คุณต้องการลบวันนี้หรือไม่?', () => {
+      window.addDaysForMonth = function (monthId) {
         showLoading();
+        const month = months.find(m => m.id === monthId);
+        if (!month) return;
 
         google.script.run.withSuccessHandler((result) => {
           loadAllData().then(() => {
             renderMonthsContainer();
             hideLoading();
-            showAlert('สำเร็จ', 'ลบวันเรียบร้อยแล้ว', '✅');
-            clearDataCache(); // Clear cache after data change
+            if (result.success) {
+              showAlert('สำเร็จ', `เพิ่มวันทั้งเดือน ${month.name} เรียบร้อยแล้ว (${result.count} วัน)`, '✅');
+              clearDataCache(); // Clear cache after data change
+            }
           });
         }).withFailureHandler((error) => {
           hideLoading();
-          showAlert('ผิดพลาด', 'ไม่สามารถลบวันได้', '❌');
-        }).deleteDay(id);
-      });
-    };
-    // Entry management functions
-    function addEntryRow(entryData = {}) {
-      const detail = entryData.detail || '';
-      const responsible = entryData.responsible || '';
-      const entryId = entryData.id || '';
-      const attachments = entryData.attachments || [];
-      const time = entryData.time || '';
-      const location = entryData.location || '';
-      const dressCode = entryData.dressCode || '';
-      const remark = entryData.remark || '';
+          showAlert('ผิดพลาด', 'ไม่สามารถเพิ่มวันทั้งเดือนได้', '❌');
+        }).addDaysForMonth(monthId, month.month);
+      };
 
-      const entriesContainer = document.getElementById('entriesContainer');
-      const entryDiv = document.createElement('div');
-      entryDiv.className = 'bg-gray-50 p-4 rounded-lg border mb-3';
+      // Day management
+      window.editMultipleDays = function (monthId) {
+        const month = months.find(m => m.id === monthId);
+        if (!month) return;
 
-      const id = entryId || (Date.now() + Math.random()).toString();
+        const monthDays = days.filter(d => d.monthId === monthId).sort((a, b) => a.date.localeCompare(b.date));
 
-      // Helper: get file icon by extension
-      function getFileIcon(fileName) {
-        if (fileName.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i)) return '🖼️';
-        if (fileName.match(/\.(pdf)$/i)) return '📕';
-        if (fileName.match(/\.(doc|docx)$/i)) return '📝';
-        if (fileName.match(/\.(xls|xlsx|csv)$/i)) return '📊';
-        if (fileName.match(/\.(ppt|pptx)$/i)) return '📊';
-        if (fileName.match(/\.(mp4|avi|mov|wmv|mkv)$/i)) return '🎬';
-        if (fileName.match(/\.(mp3|wav|ogg|flac)$/i)) return '🎵';
-        if (fileName.match(/\.(zip|rar|7z|tar|gz)$/i)) return '📦';
-        return '📄';
-      }
+        document.getElementById('editMultipleDaysMonthId').value = monthId;
+        const checkboxList = document.getElementById('editDaysCheckboxList');
 
-      // สร้าง HTML สำหรับแสดงไฟล์แนบที่มีอยู่ (thumbnail grid)
-      let existingAttachmentsHtml = '';
-      if (attachments && attachments.length > 0) {
-        existingAttachmentsHtml = `
+        checkboxList.innerHTML = monthDays.map(day => {
+          const entries = day.entries || [];
+          const entriesDisplay = entries.length > 0
+            ? entries.map(entry => {
+              const detail = entry.detail && entry.detail !== 'วันราชการปกติ' ? entry.detail : 'วันราชการปกติ';
+              const responsible = entry.responsible && entry.responsible.trim() !== '' ? ` (${entry.responsible})` : '';
+              return `${detail}${responsible}`;
+            }).join(', ')
+            : 'วันราชการปกติ';
+
+          return `
+    <label class="flex items-center p-2 hover:bg-gray-100 rounded">
+      <input type="checkbox" value="${day.id}" class="day-checkbox mr-3">
+      <span class="flex-1">${new Date(day.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })} - ${entriesDisplay}</span>
+    </label>
+    `;
+        }).join('');
+
+        document.getElementById('newDayDetail').value = '';
+        document.getElementById('editMultipleDaysModal').classList.add('active');
+      };
+      window.deleteDay = function (id) {
+        showConfirm('ยืนยันการลบ', 'คุณต้องการลบวันนี้หรือไม่?', () => {
+          showLoading();
+
+          google.script.run.withSuccessHandler((result) => {
+            loadAllData().then(() => {
+              renderMonthsContainer();
+              hideLoading();
+              showAlert('สำเร็จ', 'ลบวันเรียบร้อยแล้ว', '✅');
+              clearDataCache(); // Clear cache after data change
+            });
+          }).withFailureHandler((error) => {
+            hideLoading();
+            showAlert('ผิดพลาด', 'ไม่สามารถลบวันได้', '❌');
+          }).deleteDay(id);
+        });
+      };
+      // Entry management functions
+      function addEntryRow(entryData = {}) {
+        const detail = entryData.detail || '';
+        const responsible = entryData.responsible || '';
+        const entryId = entryData.id || '';
+        const attachments = entryData.attachments || [];
+        const time = entryData.time || '';
+        const location = entryData.location || '';
+        const dressCode = entryData.dressCode || '';
+        const remark = entryData.remark || '';
+
+        const entriesContainer = document.getElementById('entriesContainer');
+        const entryDiv = document.createElement('div');
+        entryDiv.className = 'bg-gray-50 p-4 rounded-lg border mb-3';
+
+        const id = entryId || (Date.now() + Math.random()).toString();
+
+        // Helper: get file icon by extension
+        function getFileIcon(fileName) {
+          if (fileName.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i)) return '🖼️';
+          if (fileName.match(/\.(pdf)$/i)) return '📕';
+          if (fileName.match(/\.(doc|docx)$/i)) return '📝';
+          if (fileName.match(/\.(xls|xlsx|csv)$/i)) return '📊';
+          if (fileName.match(/\.(ppt|pptx)$/i)) return '📊';
+          if (fileName.match(/\.(mp4|avi|mov|wmv|mkv)$/i)) return '🎬';
+          if (fileName.match(/\.(mp3|wav|ogg|flac)$/i)) return '🎵';
+          if (fileName.match(/\.(zip|rar|7z|tar|gz)$/i)) return '📦';
+          return '📄';
+        }
+
+        // สร้าง HTML สำหรับแสดงไฟล์แนบที่มีอยู่ (thumbnail grid)
+        let existingAttachmentsHtml = '';
+        if (attachments && attachments.length > 0) {
+          existingAttachmentsHtml = `
         <div class="existing-attachments mb-3">
           <label class="block text-sm font-medium mb-2">📎 ไฟล์แนบที่มีอยู่ (${attachments.length} ไฟล์)</label>
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             ${attachments.map(att => {
-          const isImage = att.fileName.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i);
-          if (isImage) {
-            return `
+            const isImage = att.fileName.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i);
+            if (isImage) {
+              return `
                   <div class="relative group rounded-lg overflow-hidden border bg-white shadow-sm" data-file-id="${att.fileId}">
                     <img src="https://lh3.googleusercontent.com/d/${att.fileId}" alt="${att.fileName}"
                          class="w-full h-24 object-cover" loading="lazy" decoding="async"
@@ -2597,22 +2644,22 @@
                     <p class="text-xs text-gray-600 p-1 truncate">${att.fileName}</p>
                   </div>
                 `;
-          } else {
-            return `
+            } else {
+              return `
                   <div class="relative group rounded-lg border bg-white shadow-sm p-2 flex flex-col items-center" data-file-id="${att.fileId}">
                     <span class="text-3xl mb-1">${getFileIcon(att.fileName)}</span>
                     <p class="text-xs text-gray-600 truncate w-full text-center">${att.fileName}</p>
                     <button type="button" class="remove-existing-file absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg transition-opacity" title="ลบไฟล์">✕</button>
                   </div>
                 `;
-          }
-        }).join('')}
+            }
+          }).join('')}
           </div>
         </div>
       `;
-      }
+        }
 
-      entryDiv.innerHTML = `
+        entryDiv.innerHTML = `
       <input type="hidden" class="entry-id" value="${id}">
       <input type="hidden" class="entry-attachments" value='${JSON.stringify(attachments || [])}'>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
@@ -2665,250 +2712,255 @@
       </button>
     `;
 
-      entriesContainer.appendChild(entryDiv);
+        entriesContainer.appendChild(entryDiv);
 
-      // Add remove event listener
-      entryDiv.querySelector('.remove-entry').addEventListener('click', () => {
-        entryDiv.remove();
-      });
-
-      // File drop zone
-      const dropZone = entryDiv.querySelector('.file-drop-zone');
-      const fileInput = entryDiv.querySelector('.entry-file');
-      const previewGrid = entryDiv.querySelector('.files-preview-grid');
-
-      dropZone.addEventListener('click', () => fileInput.click());
-
-      // Drag & drop support
-      dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-teal-500', 'bg-teal-50'); });
-      dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('border-teal-500', 'bg-teal-50'); });
-      dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('border-teal-500', 'bg-teal-50');
-        handleNewFiles(e.dataTransfer.files);
-      });
-
-      // Track pending files for this entry
-      entryDiv._pendingFiles = [];
-
-      function handleNewFiles(fileList) {
-        Array.from(fileList).forEach(file => {
-          if (file.size > 5 * 1024 * 1024) {
-            showAlert('แจ้งเตือน', `ไฟล์ "${file.name}" มีขนาดใหญ่กว่า 5MB`, '⚠️');
-            return;
-          }
-          entryDiv._pendingFiles.push(file);
-          addFilePreviewCard(file);
+        // Add remove event listener
+        entryDiv.querySelector('.remove-entry').addEventListener('click', () => {
+          entryDiv.remove();
         });
-      }
 
-      function addFilePreviewCard(file) {
-        const card = document.createElement('div');
-        card.className = 'relative group rounded-lg overflow-hidden border bg-white shadow-sm';
+        // File drop zone
+        const dropZone = entryDiv.querySelector('.file-drop-zone');
+        const fileInput = entryDiv.querySelector('.entry-file');
+        const previewGrid = entryDiv.querySelector('.files-preview-grid');
 
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onload = function (e) {
-            card.innerHTML = `
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // Drag & drop support
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-teal-500', 'bg-teal-50'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('border-teal-500', 'bg-teal-50'); });
+        dropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dropZone.classList.remove('border-teal-500', 'bg-teal-50');
+          handleNewFiles(e.dataTransfer.files);
+        });
+
+        // Track pending files for this entry
+        entryDiv._pendingFiles = [];
+
+        function handleNewFiles(fileList) {
+          Array.from(fileList).forEach(file => {
+            if (file.size > 5 * 1024 * 1024) {
+              showAlert('แจ้งเตือน', `ไฟล์ "${file.name}" มีขนาดใหญ่กว่า 5MB`, '⚠️');
+              return;
+            }
+            entryDiv._pendingFiles.push(file);
+            addFilePreviewCard(file);
+          });
+        }
+
+        function addFilePreviewCard(file) {
+          const card = document.createElement('div');
+          card.className = 'relative group rounded-lg overflow-hidden border bg-white shadow-sm';
+
+          if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+              card.innerHTML = `
             <img src="${e.target.result}" alt="${file.name}" class="w-full h-24 object-cover" loading="lazy" decoding="async">
             <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center">
               <button type="button" class="remove-pending-file opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs shadow-lg transition-opacity" title="ลบ">✕</button>
             </div>
             <p class="text-xs text-gray-600 p-1 truncate">${file.name}</p>
           `;
-            card.querySelector('.remove-pending-file').addEventListener('click', () => removePendingFile(file, card));
-          };
-          reader.readAsDataURL(file);
-        } else {
-          card.className += ' p-2 flex flex-col items-center';
-          card.innerHTML = `
+              card.querySelector('.remove-pending-file').addEventListener('click', () => removePendingFile(file, card));
+            };
+            reader.readAsDataURL(file);
+          } else {
+            card.className += ' p-2 flex flex-col items-center';
+            card.innerHTML = `
           <span class="text-3xl mb-1">${getFileIcon(file.name)}</span>
           <p class="text-xs text-gray-600 truncate w-full text-center">${file.name}</p>
           <button type="button" class="remove-pending-file absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg transition-opacity" title="ลบ">✕</button>
         `;
-          card.querySelector('.remove-pending-file').addEventListener('click', () => removePendingFile(file, card));
-        }
-        previewGrid.appendChild(card);
-      }
-
-      function removePendingFile(file, card) {
-        entryDiv._pendingFiles = entryDiv._pendingFiles.filter(f => f !== file);
-        card.remove();
-      }
-
-      if (fileInput) {
-        fileInput.addEventListener('change', function (e) {
-          handleNewFiles(e.target.files);
-          fileInput.value = '';
-        });
-      }
-
-      // Event listener สำหรับลบไฟล์ที่มีอยู่เดิม (from server)
-      entryDiv.querySelectorAll('.remove-existing-file').forEach(btn => {
-        btn.addEventListener('click', function () {
-          const fileItem = this.closest('[data-file-id]');
-          const fileId = fileItem.dataset.fileId;
-
-          // ลบออกจาก DOM
-          fileItem.remove();
-
-          // อัปเดตข้อมูล attachments
-          const attachmentsInput = entryDiv.querySelector('.entry-attachments');
-          let currentAttachments = JSON.parse(attachmentsInput.value || '[]');
-          currentAttachments = currentAttachments.filter(att => att.fileId !== fileId);
-          attachmentsInput.value = JSON.stringify(currentAttachments);
-
-          // ถ้าไม่มีไฟล์เหลือแล้ว ให้ซ่อนส่วนแสดงไฟล์
-          const existingAttachmentsSection = entryDiv.querySelector('.existing-attachments');
-          if (existingAttachmentsSection && currentAttachments.length === 0) {
-            existingAttachmentsSection.remove();
+            card.querySelector('.remove-pending-file').addEventListener('click', () => removePendingFile(file, card));
           }
+          previewGrid.appendChild(card);
+        }
+
+        function removePendingFile(file, card) {
+          entryDiv._pendingFiles = entryDiv._pendingFiles.filter(f => f !== file);
+          card.remove();
+        }
+
+        if (fileInput) {
+          fileInput.addEventListener('change', function (e) {
+            handleNewFiles(e.target.files);
+            fileInput.value = '';
+          });
+        }
+
+        // Event listener สำหรับลบไฟล์ที่มีอยู่เดิม (from server)
+        entryDiv.querySelectorAll('.remove-existing-file').forEach(btn => {
+          btn.addEventListener('click', function () {
+            const fileItem = this.closest('[data-file-id]');
+            const fileId = fileItem.dataset.fileId;
+
+            // ลบออกจาก DOM
+            fileItem.remove();
+
+            // อัปเดตข้อมูล attachments
+            const attachmentsInput = entryDiv.querySelector('.entry-attachments');
+            let currentAttachments = JSON.parse(attachmentsInput.value || '[]');
+            currentAttachments = currentAttachments.filter(att => att.fileId !== fileId);
+            attachmentsInput.value = JSON.stringify(currentAttachments);
+
+            // ถ้าไม่มีไฟล์เหลือแล้ว ให้ซ่อนส่วนแสดงไฟล์
+            const existingAttachmentsSection = entryDiv.querySelector('.existing-attachments');
+            if (existingAttachmentsSection && currentAttachments.length === 0) {
+              existingAttachmentsSection.remove();
+            }
+          });
         });
-      });
-    }
-    // Multiple management functions
-    window.deleteMultipleDays = function (monthId) {
-      const month = months.find(m => m.id === monthId);
-      if (!month) return;
+      }
+      // Multiple management functions
+      window.deleteMultipleDays = function (monthId) {
+        const month = months.find(m => m.id === monthId);
+        if (!month) return;
 
-      const monthDays = days.filter(d => d.monthId === monthId).sort((a, b) => a.date.localeCompare(b.date));
+        const monthDays = days.filter(d => d.monthId === monthId).sort((a, b) => a.date.localeCompare(b.date));
 
-      document.getElementById('deleteMultipleDaysMonthId').value = monthId;
-      const checkboxList = document.getElementById('daysCheckboxList');
+        document.getElementById('deleteMultipleDaysMonthId').value = monthId;
+        const checkboxList = document.getElementById('daysCheckboxList');
 
-      checkboxList.innerHTML = monthDays.map(day => {
-        const entries = day.entries || [];
-        const entriesDisplay = entries.length > 0
-          ? entries.map(entry => {
-            const detail = entry.detail && entry.detail !== 'วันราชการปกติ' ? entry.detail : 'วันราชการปกติ';
-            const responsible = entry.responsible && entry.responsible.trim() !== '' ? ` (${entry.responsible})` : '';
-            return `${detail}${responsible}`;
-          }).join(', ')
-          : 'วันราชการปกติ';
+        checkboxList.innerHTML = monthDays.map(day => {
+          const entries = day.entries || [];
+          const entriesDisplay = entries.length > 0
+            ? entries.map(entry => {
+              const detail = entry.detail && entry.detail !== 'วันราชการปกติ' ? entry.detail : 'วันราชการปกติ';
+              const responsible = entry.responsible && entry.responsible.trim() !== '' ? ` (${entry.responsible})` : '';
+              return `${detail}${responsible}`;
+            }).join(', ')
+            : 'วันราชการปกติ';
 
-        return `
+          return `
     <label class="flex items-center p-2 hover:bg-gray-100 rounded">
       <input type="checkbox" value="${day.id}" class="day-checkbox mr-3">
       <span class="flex-1">${new Date(day.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })} - ${entriesDisplay}</span>
     </label>
     `;
-      }).join('');
+        }).join('');
 
-      document.getElementById('deleteMultipleDaysModal').classList.add('active');
-    };
+        document.getElementById('deleteMultipleDaysModal').classList.add('active');
+      };
 
-    window.editMultipleDays = function (monthId) {
-      const month = months.find(m => m.id === monthId);
-      if (!month) return;
-      const monthDays = days.filter(d => d.monthId === monthId).sort((a, b) => a.date.localeCompare(b.date));
+      window.editMultipleDays = function (monthId) {
+        const month = months.find(m => m.id === monthId);
+        if (!month) return;
+        const monthDays = days.filter(d => d.monthId === monthId).sort((a, b) => a.date.localeCompare(b.date));
 
-      document.getElementById('editMultipleDaysMonthId').value = monthId;
-      const checkboxList = document.getElementById('editDaysCheckboxList');
+        document.getElementById('editMultipleDaysMonthId').value = monthId;
+        const checkboxList = document.getElementById('editDaysCheckboxList');
 
-      checkboxList.innerHTML = monthDays.map(day => {
-        const entries = day.entries || [];
-        const entriesDisplay = entries.length > 0
-          ? entries.map(entry => {
-            const detail = entry.detail && entry.detail !== 'วันราชการปกติ' ? entry.detail : 'วันราชการปกติ';
-            const responsible = entry.responsible && entry.responsible.trim() !== '' ? ` (${entry.responsible})` : '';
-            return `${detail}${responsible}`;
-          }).join(', ')
-          : 'วันราชการปกติ';
+        checkboxList.innerHTML = monthDays.map(day => {
+          const entries = day.entries || [];
+          const entriesDisplay = entries.length > 0
+            ? entries.map(entry => {
+              const detail = entry.detail && entry.detail !== 'วันราชการปกติ' ? entry.detail : 'วันราชการปกติ';
+              const responsible = entry.responsible && entry.responsible.trim() !== '' ? ` (${entry.responsible})` : '';
+              return `${detail}${responsible}`;
+            }).join(', ')
+            : 'วันราชการปกติ';
 
-        return `
+          return `
       <label class="flex items-center p-2 hover:bg-gray-100 rounded">
         <input type="checkbox" value="${day.id}" class="day-checkbox mr-3">
         <span class="flex-1">${new Date(day.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })} - ${entriesDisplay}</span>
       </label>
       `;
-      }).join('');
+        }).join('');
 
-      document.getElementById('newDayDetail').value = '';
-      document.getElementById('editMultipleDaysModal').classList.add('active');
-    };
-    function showDeleteMultipleMonthsModal() {
-      const yearFilter = document.getElementById('adminYearFilter');
-      const selectedYear = yearFilter.value;
+        const multiDayInputs = ['newDayDetail', 'multiDayTime', 'multiDayLocation', 'multiDayDressCode', 'multiDayResponsible', 'multiDayRemark'];
+        multiDayInputs.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
 
-      const year = years.find(y => y.name === selectedYear);
-      if (!year) return;
-      const selectedMonths = months.filter(m => m.yearId === year.id);
+        document.getElementById('editMultipleDaysModal').classList.add('active');
+      };
+      function showDeleteMultipleMonthsModal() {
+        const yearFilter = document.getElementById('adminYearFilter');
+        const selectedYear = yearFilter.value;
 
-      const checkboxList = document.getElementById('monthsCheckboxList');
-      checkboxList.innerHTML = selectedMonths.map(month => `
+        const year = years.find(y => y.name === selectedYear);
+        if (!year) return;
+        const selectedMonths = months.filter(m => m.yearId === year.id);
+
+        const checkboxList = document.getElementById('monthsCheckboxList');
+        checkboxList.innerHTML = selectedMonths.map(month => `
       <label class="flex items-center p-2 hover:bg-gray-100 rounded">
         <input type="checkbox" value="${month.id}" class="month-checkbox mr-3">
         <span class="flex-1">${month.name}</span>
       </label>
     `).join('');
 
-      document.getElementById('deleteMultipleMonthsModal').classList.add('active');
-    }
-    function updateYearFilters() {
-      const yearFilter = document.getElementById('yearFilter');
-      const adminYearFilter = document.getElementById('adminYearFilter');
-
-      const options = years.map(y => `<option value="${y.name}">${y.name}</option>`).join('');
-      yearFilter.innerHTML = options;
-      adminYearFilter.innerHTML = options;
-
-      const currentYear = years.find(y => y.isCurrent) || years[0];
-      if (currentYear) {
-        yearFilter.value = currentYear.name;
-        adminYearFilter.value = currentYear.name;
+        document.getElementById('deleteMultipleMonthsModal').classList.add('active');
       }
+      function updateYearFilters() {
+        const yearFilter = document.getElementById('yearFilter');
+        const adminYearFilter = document.getElementById('adminYearFilter');
 
-      updateYearInfo();
-    }
-    function updateYearInfo() {
-      const yearFilter = document.getElementById('yearFilter');
-      const selectedYearName = yearFilter.value;
-      const selectedYear = years.find(y => y.name === selectedYearName);
+        const options = years.map(y => `<option value="${y.name}">${y.name}</option>`).join('');
+        yearFilter.innerHTML = options;
+        adminYearFilter.innerHTML = options;
 
-      document.getElementById('currentYear').textContent = selectedYearName;
+        const currentYear = years.find(y => y.isCurrent) || years[0];
+        if (currentYear) {
+          yearFilter.value = currentYear.name;
+          adminYearFilter.value = currentYear.name;
+        }
 
-      if (selectedYear && selectedYear.startDate && selectedYear.endDate) {
-        const startDate = new Date(selectedYear.startDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-        const endDate = new Date(selectedYear.endDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-        document.getElementById('startDate').textContent = startDate;
-        document.getElementById('endDate').textContent = endDate;
-      } else {
-        document.getElementById('startDate').textContent = '-';
-        document.getElementById('endDate').textContent = '-';
+        updateYearInfo();
       }
-    }
-    function updateHeaderAndFooter() {
-      // Update header
-      const appTitle = settings.appTitle || '📅 ปฎิทินดำเนินงาน/นับวันราชการ';
-      document.getElementById('headerTitle').textContent = appTitle;
-      document.getElementById('headerSchool').textContent = settings.schoolName;
-      document.getElementById('headerOffice').textContent = settings.educationOffice;
+      function updateYearInfo() {
+        const yearFilter = document.getElementById('yearFilter');
+        const selectedYearName = yearFilter.value;
+        const selectedYear = years.find(y => y.name === selectedYearName);
 
-      // Update logo with performance optimizations
-      const headerLogo = document.getElementById('headerLogo');
-      if (settings.schoolLogo) {
-        headerLogo.innerHTML = `<img src="${settings.schoolLogo}" alt="โลโก้หน่วยงาน" class="w-full h-full object-contain rounded-full" loading="lazy" decoding="async" width="64" height="64">`;
-      } else {
-        headerLogo.innerHTML = '<span class="text-teal-600 text-2xl font-bold">🏫</span>';
+        document.getElementById('currentYear').textContent = selectedYearName;
+
+        if (selectedYear && selectedYear.startDate && selectedYear.endDate) {
+          const startDate = new Date(selectedYear.startDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+          const endDate = new Date(selectedYear.endDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+          document.getElementById('startDate').textContent = startDate;
+          document.getElementById('endDate').textContent = endDate;
+        } else {
+          document.getElementById('startDate').textContent = '-';
+          document.getElementById('endDate').textContent = '-';
+        }
       }
+      function updateHeaderAndFooter() {
+        // Update header
+        const appTitle = settings.appTitle || '📅 ปฎิทินดำเนินงาน/นับวันราชการ';
+        document.getElementById('headerTitle').textContent = appTitle;
+        document.getElementById('headerSchool').textContent = settings.schoolName;
+        document.getElementById('headerOffice').textContent = settings.educationOffice;
 
-      // Update footer
-      document.getElementById('footerTitle').textContent = settings.appTitle || `ปฎิทินดำเนินงาน/นับวันราชการ ${settings.schoolName}`;
-      document.getElementById('footerOffice').textContent = settings.educationOffice;
-      const fy = document.getElementById('footerYear');
-      if (fy) fy.textContent = new Date().getFullYear() + 543;
-    }
-    function loadSettingsForm() {
-      document.getElementById('settingsAppTitle').value = settings.appTitle || '';
-      document.getElementById('settingsSchoolName').value = settings.schoolName;
-      document.getElementById('settingsEducationOffice').value = settings.educationOffice;
+        // Update logo with performance optimizations
+        const headerLogo = document.getElementById('headerLogo');
+        if (settings.schoolLogo) {
+          headerLogo.innerHTML = `<img src="${settings.schoolLogo}" alt="โลโก้หน่วยงาน" class="w-full h-full object-contain rounded-full" loading="lazy" decoding="async" width="64" height="64">`;
+        } else {
+          headerLogo.innerHTML = '<span class="text-teal-600 text-2xl font-bold">🏫</span>';
+        }
 
-      // Update logo preview with performance attributes
-      const logoPreview = document.getElementById('logoPreview');
-      if (settings.schoolLogo) {
-        logoPreview.innerHTML = `<img src="${settings.schoolLogo}" alt="โลโก้หน่วยงาน" class="max-w-full max-h-full object-contain" loading="lazy" decoding="async" width="128" height="128">`;
-      } else {
-        logoPreview.innerHTML = `
+        // Update footer
+        document.getElementById('footerTitle').textContent = settings.appTitle || `ปฎิทินดำเนินงาน/นับวันราชการ ${settings.schoolName}`;
+        document.getElementById('footerOffice').textContent = settings.educationOffice;
+        const fy = document.getElementById('footerYear');
+        if (fy) fy.textContent = new Date().getFullYear() + 543;
+      }
+      function loadSettingsForm() {
+        document.getElementById('settingsAppTitle').value = settings.appTitle || '';
+        document.getElementById('settingsSchoolName').value = settings.schoolName;
+        document.getElementById('settingsEducationOffice').value = settings.educationOffice;
+
+        // Update logo preview with performance attributes
+        const logoPreview = document.getElementById('logoPreview');
+        if (settings.schoolLogo) {
+          logoPreview.innerHTML = `<img src="${settings.schoolLogo}" alt="โลโก้หน่วยงาน" class="max-w-full max-h-full object-contain" loading="lazy" decoding="async" width="128" height="128">`;
+        } else {
+          logoPreview.innerHTML = `
         <div class="text-gray-400">
           <svg class="w-16 h-16 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path>
@@ -2916,630 +2968,640 @@
           <p class="text-sm">ไม่มีรูปภาพ</p>
         </div>
       `;
+        }
       }
-    }
-    // Event listeners
-    document.getElementById('loginBtn').addEventListener('click', () => {
-      document.getElementById('loginModal').classList.add('active');
-    });
-    document.getElementById('cancelLogin').addEventListener('click', () => {
-      document.getElementById('loginModal').classList.remove('active');
-    });
-    document.getElementById('loginForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      showLoading();
-
-      const username = document.getElementById('loginUsername').value;
-      const password = document.getElementById('loginPassword').value;
-
-      const user = users.find(u => u.username === username && u.password === password);
-
-      hideLoading();
-
-      if (user) {
-        isAdmin = true;
+      // Event listeners
+      document.getElementById('loginBtn').addEventListener('click', () => {
+        document.getElementById('loginModal').classList.add('active');
+      });
+      document.getElementById('cancelLogin').addEventListener('click', () => {
         document.getElementById('loginModal').classList.remove('active');
-        document.getElementById('publicView').style.display = 'none';
-        document.getElementById('adminView').style.display = 'block';
-
-        // ซ่อนทุก section และแสดง settings
-        document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
-        document.getElementById('settingsSection').style.display = 'block';
-
-        // ตั้งเมนู active
-        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('bg-teal-600'));
-        document.querySelector('[data-section="settings"]').classList.add('bg-teal-600');
-
-        renderUsersTable();
-        renderYearsTable();
-        loadSettingsForm();
-        showAlert('สำเร็จ', 'เข้าสู่ระบบเรียบร้อยแล้ว', '✅');
-      } else {
-        showAlert('ผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', '❌');
-      }
-    });
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      showConfirm('ยืนยันการออกจากระบบ', 'คุณต้องการออกจากระบบหรือไม่?', () => {
-        isAdmin = false;
-        document.getElementById('publicView').style.display = 'block';
-        document.getElementById('adminView').style.display = 'none';
-        document.getElementById('loginUsername').value = '';
-        document.getElementById('loginPassword').value = '';
-
-        // Refresh public view
-        updateYearFilters();
-        updateHeaderAndFooter();
-        renderCalendar();
-
-        showAlert('สำเร็จ', 'ออกจากระบบเรียบร้อยแล้ว', '✅');
-        clearDataCache(); // Clear cache after data change
       });
-    });
-    document.getElementById('menuToggle').addEventListener('click', () => {
-      document.getElementById('sidebar').classList.toggle('active');
-    });
-    document.querySelectorAll('.menu-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const section = item.dataset.section;
-        document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
-        document.getElementById(`${section}Section`).style.display = 'block';
+      document.getElementById('loginForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        showLoading();
 
-        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('bg-teal-600'));
-        item.classList.add('bg-teal-600');
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
 
-        if (window.innerWidth < 768) {
-          document.getElementById('sidebar').classList.remove('active');
-        }
-        if (section === 'calendar') {
-          renderMonthsContainer();
-        } else if (section === 'settings') {
-          loadSettingsForm();
-        }
-      });
-    });
-    document.getElementById('addUserBtn').addEventListener('click', () => {
-      document.getElementById('userModalTitle').textContent = 'เพิ่มผู้ใช้งาน';
-      document.getElementById('userForm').reset();
-      document.getElementById('userId').value = '';
-      document.getElementById('userModal').classList.add('active');
-    });
-    document.getElementById('userForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      showLoading();
+        const user = users.find(u => u.username === username && u.password === password);
 
-      const id = document.getElementById('userId').value;
-      const username = document.getElementById('userUsername').value;
-      const password = document.getElementById('userPassword').value;
-      const fullname = document.getElementById('userFullname').value;
+        hideLoading();
 
-      let newUsers = [...users];
+        if (user) {
+          isAdmin = true;
+          document.getElementById('loginModal').classList.remove('active');
+          document.getElementById('publicView').style.display = 'none';
+          document.getElementById('adminView').style.display = 'block';
 
-      if (id) {
-        const index = newUsers.findIndex(u => u.id === id);
-        newUsers[index] = { id, username, password, fullname };
-      } else {
-        newUsers.push({
-          id: Date.now().toString(),
-          username,
-          password,
-          fullname
-        });
-      }
+          // ซ่อนทุก section และแสดง settings
+          document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
+          document.getElementById('settingsSection').style.display = 'block';
 
-      google.script.run.withSuccessHandler(() => {
-        loadAllData().then(() => {
+          // ตั้งเมนู active
+          document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('bg-teal-600'));
+          document.querySelector('[data-section="settings"]').classList.add('bg-teal-600');
+
           renderUsersTable();
-          document.getElementById('userModal').classList.remove('active');
-          hideLoading();
-          showAlert('สำเร็จ', 'บันทึกข้อมูลเรียบร้อยแล้ว', '✅');
+          renderYearsTable();
+          loadSettingsForm();
+          showAlert('สำเร็จ', 'เข้าสู่ระบบเรียบร้อยแล้ว', '✅');
+        } else {
+          showAlert('ผิดพลาด', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', '❌');
+        }
+      });
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        showConfirm('ยืนยันการออกจากระบบ', 'คุณต้องการออกจากระบบหรือไม่?', () => {
+          isAdmin = false;
+          document.getElementById('publicView').style.display = 'block';
+          document.getElementById('adminView').style.display = 'none';
+          document.getElementById('loginUsername').value = '';
+          document.getElementById('loginPassword').value = '';
+
+          // Refresh public view
+          updateYearFilters();
+          updateHeaderAndFooter();
+          renderCalendar();
+
+          showAlert('สำเร็จ', 'ออกจากระบบเรียบร้อยแล้ว', '✅');
           clearDataCache(); // Clear cache after data change
         });
-      }).saveUsers(newUsers);
-    });
-    document.getElementById('addYearBtn').addEventListener('click', () => {
-      document.getElementById('yearModalTitle').textContent = 'เพิ่มปีงบประมาณ';
-      document.getElementById('yearForm').reset();
-      document.getElementById('yearId').value = '';
-      document.getElementById('yearStartDate').value = '';
-      document.getElementById('yearEndDate').value = '';
-      document.getElementById('yearModal').classList.add('active');
-    });
+      });
+      document.getElementById('menuToggle').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.toggle('active');
+      });
+      document.querySelectorAll('.menu-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const section = item.dataset.section;
+          document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
+          document.getElementById(`${section}Section`).style.display = 'block';
 
-    document.getElementById('smartAddYearBtn').addEventListener('click', () => {
-      showConfirm('ยืนยันการเพิ่มปีงบประมาณอัตโนมัติ', 'ระบบจะสร้างปีงบประมาณถัดไปพร้อมข้อมูลวันหยุดอัตโนมัติ ต้องการดำเนินการต่อหรือไม่?', () => {
+          document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('bg-teal-600'));
+          item.classList.add('bg-teal-600');
+
+          if (window.innerWidth < 768) {
+            document.getElementById('sidebar').classList.remove('active');
+          }
+          if (section === 'calendar') {
+            renderMonthsContainer();
+          } else if (section === 'settings') {
+            loadSettingsForm();
+          }
+        });
+      });
+      document.getElementById('addUserBtn').addEventListener('click', () => {
+        document.getElementById('userModalTitle').textContent = 'เพิ่มผู้ใช้งาน';
+        document.getElementById('userForm').reset();
+        document.getElementById('userId').value = '';
+        document.getElementById('userModal').classList.add('active');
+      });
+      document.getElementById('userForm').addEventListener('submit', (e) => {
+        e.preventDefault();
         showLoading();
+
+        const id = document.getElementById('userId').value;
+        const username = document.getElementById('userUsername').value;
+        const password = document.getElementById('userPassword').value;
+        const fullname = document.getElementById('userFullname').value;
+
+        let newUsers = [...users];
+
+        if (id) {
+          const index = newUsers.findIndex(u => u.id === id);
+          newUsers[index] = { id, username, password, fullname };
+        } else {
+          newUsers.push({
+            id: Date.now().toString(),
+            username,
+            password,
+            fullname
+          });
+        }
+
+        google.script.run.withSuccessHandler(() => {
+          loadAllData().then(() => {
+            renderUsersTable();
+            document.getElementById('userModal').classList.remove('active');
+            hideLoading();
+            showAlert('สำเร็จ', 'บันทึกข้อมูลเรียบร้อยแล้ว', '✅');
+            clearDataCache(); // Clear cache after data change
+          });
+        }).saveUsers(newUsers);
+      });
+      document.getElementById('addYearBtn').addEventListener('click', () => {
+        document.getElementById('yearModalTitle').textContent = 'เพิ่มปีงบประมาณ';
+        document.getElementById('yearForm').reset();
+        document.getElementById('yearId').value = '';
+        document.getElementById('yearStartDate').value = '';
+        document.getElementById('yearEndDate').value = '';
+        document.getElementById('yearModal').classList.add('active');
+      });
+
+      document.getElementById('smartAddYearBtn').addEventListener('click', () => {
+        showConfirm('ยืนยันการเพิ่มปีงบประมาณอัตโนมัติ', 'ระบบจะสร้างปีงบประมาณถัดไปพร้อมข้อมูลวันหยุดอัตโนมัติ ต้องการดำเนินการต่อหรือไม่?', () => {
+          showLoading();
+          google.script.run.withSuccessHandler((result) => {
+            if (result.success) {
+              loadAllData().then(() => {
+                renderYearsTable();
+                updateYearFilters();
+                renderMonthsContainer();
+                updateYearInfo();
+                hideLoading();
+                showAlert('สำเร็จ', `เพิ่มปีงบประมาณ ${result.yearName} เรียบร้อยแล้ว`, '✨');
+                clearDataCache();
+              });
+            } else {
+              hideLoading();
+              showAlert('ผิดพลาด', result.message || 'ไม่สามารถเพิ่มปีงบประมาณได้', '❌');
+            }
+          }).withFailureHandler((error) => {
+            hideLoading();
+            showAlert('ผิดพลาด', 'เกิดข้อผิดพลาดในการเรียกใช้คำสั่ง', '❌');
+            console.error(error);
+          }).smartAddNextYear();
+        });
+      });
+      document.getElementById('yearForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        showLoading();
+
+        const id = document.getElementById('yearId').value;
+        const name = document.getElementById('yearName').value;
+        const startDate = document.getElementById('yearStartDate').value;
+        const endDate = document.getElementById('yearEndDate').value;
+        const isCurrent = document.getElementById('yearCurrent').checked;
+
+        let newYears = [...years];
+
+        if (isCurrent) {
+          newYears.forEach(y => y.isCurrent = false);
+        }
+
+        if (id) {
+          const index = newYears.findIndex(y => y.id === id);
+          newYears[index] = { id, name, startDate, endDate, isCurrent };
+        } else {
+          newYears.push({
+            id: Date.now().toString(),
+            name,
+            startDate,
+            endDate,
+            isCurrent
+          });
+        }
+
+        google.script.run.withSuccessHandler(() => {
+          loadAllData().then(() => {
+            renderYearsTable();
+            updateYearFilters();
+            renderCalendar();
+            updateYearInfo();
+            document.getElementById('yearModal').classList.remove('active');
+            hideLoading();
+            showAlert('สำเร็จ', 'บันทึกข้อมูลเรียบร้อยแล้ว', '✅');
+            clearDataCache(); // Clear cache after data change
+          });
+        }).saveYears(newYears);
+      });
+      document.getElementById('addMonthBtn').addEventListener('click', () => {
+        document.getElementById('monthForm').reset();
+        document.getElementById('monthModal').classList.add('active');
+      });
+      document.getElementById('monthForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        showLoading();
+
+        const monthValue = document.getElementById('monthPicker').value;
+        const yearFilter = document.getElementById('adminYearFilter').value;
+        const year = years.find(y => y.name === yearFilter);
+
+        if (!year) {
+          hideLoading();
+          showAlert('ผิดพลาด', 'กรุณาเลือกปีงบประมาณ', '❌');
+          return;
+        }
+
+        const [yearNum, monthNum] = monthValue.split('-');
+        const monthName = `${thaiMonths[parseInt(monthNum) - 1]} ${parseInt(yearNum) + 543}`;
+
         google.script.run.withSuccessHandler((result) => {
           if (result.success) {
+            // โหลดข้อมูลใหม่เพื่อให้ได้ข้อมูลเดือนล่าสุด
             loadAllData().then(() => {
-              renderYearsTable();
-              updateYearFilters();
               renderMonthsContainer();
-              updateYearInfo();
+              document.getElementById('monthModal').classList.remove('active');
               hideLoading();
-              showAlert('สำเร็จ', `เพิ่มปีงบประมาณ ${result.yearName} เรียบร้อยแล้ว`, '✨');
-              clearDataCache();
+              showAlert('สำเร็จ', `เพิ่มเดือน ${monthName} เรียบร้อยแล้ว`, '✅');
+              clearDataCache(); // Clear cache after data change
             });
           } else {
             hideLoading();
-            showAlert('ผิดพลาด', result.message || 'ไม่สามารถเพิ่มปีงบประมาณได้', '❌');
+            showAlert('ผิดพลาด', result.message, '❌');
           }
         }).withFailureHandler((error) => {
           hideLoading();
-          showAlert('ผิดพลาด', 'เกิดข้อผิดพลาดในการเรียกใช้คำสั่ง', '❌');
-          console.error(error);
-        }).smartAddNextYear();
+          showAlert('ผิดพลาด', 'ไม่สามารถเพิ่มเดือนได้', '❌');
+          console.error('Error adding month:', error);
+        }).addMonth(year.id, monthValue, monthName);
       });
-    });
-    document.getElementById('yearForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      showLoading();
+      document.getElementById('dayForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showLoading();
 
-      const id = document.getElementById('yearId').value;
-      const name = document.getElementById('yearName').value;
-      const startDate = document.getElementById('yearStartDate').value;
-      const endDate = document.getElementById('yearEndDate').value;
-      const isCurrent = document.getElementById('yearCurrent').checked;
+        const id = document.getElementById('dayId').value;
+        const monthId = document.getElementById('dayMonthId').value;
+        const date = document.getElementById('dayDate').value;
 
-      let newYears = [...years];
+        // Collect entries with file attachments
+        const entryRows = document.querySelectorAll('#entriesContainer > div');
+        const entries = [];
 
-      if (isCurrent) {
-        newYears.forEach(y => y.isCurrent = false);
-      }
+        for (const row of entryRows) {
+          const entryId = row.querySelector('.entry-id').value;
+          const detail = row.querySelector('.entry-detail').value.trim();
+          const responsible = row.querySelector('.entry-responsible').value.trim();
+          const time = row.querySelector('.entry-time') ? row.querySelector('.entry-time').value.trim() : '';
+          const location = row.querySelector('.entry-location') ? row.querySelector('.entry-location').value.trim() : '';
+          const dressCode = row.querySelector('.entry-dresscode') ? row.querySelector('.entry-dresscode').value.trim() : '';
+          const remark = row.querySelector('.entry-remark') ? row.querySelector('.entry-remark').value.trim() : '';
+          const attachmentsInput = row.querySelector('.entry-attachments');
 
-      if (id) {
-        const index = newYears.findIndex(y => y.id === id);
-        newYears[index] = { id, name, startDate, endDate, isCurrent };
-      } else {
-        newYears.push({
-          id: Date.now().toString(),
-          name,
-          startDate,
-          endDate,
-          isCurrent
-        });
-      }
+          let attachments = [];
 
-      google.script.run.withSuccessHandler(() => {
-        loadAllData().then(() => {
-          renderYearsTable();
-          updateYearFilters();
-          renderCalendar();
-          updateYearInfo();
-          document.getElementById('yearModal').classList.remove('active');
-          hideLoading();
-          showAlert('สำเร็จ', 'บันทึกข้อมูลเรียบร้อยแล้ว', '✅');
-          clearDataCache(); // Clear cache after data change
-        });
-      }).saveYears(newYears);
-    });
-    document.getElementById('addMonthBtn').addEventListener('click', () => {
-      document.getElementById('monthForm').reset();
-      document.getElementById('monthModal').classList.add('active');
-    });
-    document.getElementById('monthForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      showLoading();
-
-      const monthValue = document.getElementById('monthPicker').value;
-      const yearFilter = document.getElementById('adminYearFilter').value;
-      const year = years.find(y => y.name === yearFilter);
-
-      if (!year) {
-        hideLoading();
-        showAlert('ผิดพลาด', 'กรุณาเลือกปีงบประมาณ', '❌');
-        return;
-      }
-
-      const [yearNum, monthNum] = monthValue.split('-');
-      const monthName = `${thaiMonths[parseInt(monthNum) - 1]} ${parseInt(yearNum) + 543}`;
-
-      google.script.run.withSuccessHandler((result) => {
-        if (result.success) {
-          // โหลดข้อมูลใหม่เพื่อให้ได้ข้อมูลเดือนล่าสุด
-          loadAllData().then(() => {
-            renderMonthsContainer();
-            document.getElementById('monthModal').classList.remove('active');
-            hideLoading();
-            showAlert('สำเร็จ', `เพิ่มเดือน ${monthName} เรียบร้อยแล้ว`, '✅');
-            clearDataCache(); // Clear cache after data change
-          });
-        } else {
-          hideLoading();
-          showAlert('ผิดพลาด', result.message, '❌');
-        }
-      }).withFailureHandler((error) => {
-        hideLoading();
-        showAlert('ผิดพลาด', 'ไม่สามารถเพิ่มเดือนได้', '❌');
-        console.error('Error adding month:', error);
-      }).addMonth(year.id, monthValue, monthName);
-    });
-    document.getElementById('dayForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      showLoading();
-
-      const id = document.getElementById('dayId').value;
-      const monthId = document.getElementById('dayMonthId').value;
-      const date = document.getElementById('dayDate').value;
-
-      // Collect entries with file attachments
-      const entryRows = document.querySelectorAll('#entriesContainer > div');
-      const entries = [];
-
-      for (const row of entryRows) {
-        const entryId = row.querySelector('.entry-id').value;
-        const detail = row.querySelector('.entry-detail').value.trim();
-        const responsible = row.querySelector('.entry-responsible').value.trim();
-        const time = row.querySelector('.entry-time') ? row.querySelector('.entry-time').value.trim() : '';
-        const location = row.querySelector('.entry-location') ? row.querySelector('.entry-location').value.trim() : '';
-        const dressCode = row.querySelector('.entry-dresscode') ? row.querySelector('.entry-dresscode').value.trim() : '';
-        const remark = row.querySelector('.entry-remark') ? row.querySelector('.entry-remark').value.trim() : '';
-        const attachmentsInput = row.querySelector('.entry-attachments');
-
-        let attachments = [];
-
-        // เก็บไฟล์แนบที่มีอยู่เดิม
-        if (attachmentsInput && attachmentsInput.value) {
-          try {
-            attachments = JSON.parse(attachmentsInput.value);
-          } catch (e) {
-            attachments = [];
-          }
-        }
-
-        // อัปโหลดไฟล์ใหม่ (รองรับหลายไฟล์)
-        const pendingFiles = row._pendingFiles || [];
-        for (const file of pendingFiles) {
-          try {
-            // อ่านไฟล์เป็น base64
-            const base64Data = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                const result = e.target.result;
-                const base64 = result.split(',')[1];
-                resolve(base64);
-              };
-              reader.onerror = reject;
-              reader.readAsDataURL(file);
-            });
-
-            // อัปโหลดไฟล์ไปยัง Google Drive
-            const uploadResult = await new Promise((resolve, reject) => {
-              google.script.run
-                .withSuccessHandler(resolve)
-                .withFailureHandler(reject)
-                .uploadFileAttachment(base64Data, file.name, file.type);
-            });
-
-            if (uploadResult.success) {
-              attachments.push({
-                fileId: uploadResult.fileId,
-                fileName: uploadResult.fileName,
-                fileUrl: uploadResult.fileUrl,
-                downloadUrl: uploadResult.downloadUrl
-              });
-            } else {
-              console.error('Upload failed:', uploadResult.error);
-              showAlert('ผิดพลาด', `ไม่สามารถอัปโหลดไฟล์ ${file.name}: ${uploadResult.error}`, '❌');
+          // เก็บไฟล์แนบที่มีอยู่เดิม
+          if (attachmentsInput && attachmentsInput.value) {
+            try {
+              attachments = JSON.parse(attachmentsInput.value);
+            } catch (e) {
+              attachments = [];
             }
-          } catch (error) {
-            console.error('Error uploading file:', error);
-            showAlert('ผิดพลาด', `ไม่สามารถอัปโหลดไฟล์ ${file.name}`, '❌');
+          }
+
+          // อัปโหลดไฟล์ใหม่ (รองรับหลายไฟล์)
+          const pendingFiles = row._pendingFiles || [];
+          for (const file of pendingFiles) {
+            try {
+              // อ่านไฟล์เป็น base64
+              const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  const result = e.target.result;
+                  const base64 = result.split(',')[1];
+                  resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+              });
+
+              // อัปโหลดไฟล์ไปยัง Google Drive
+              const uploadResult = await new Promise((resolve, reject) => {
+                google.script.run
+                  .withSuccessHandler(resolve)
+                  .withFailureHandler(reject)
+                  .uploadFileAttachment(base64Data, file.name, file.type);
+              });
+
+              if (uploadResult.success) {
+                attachments.push({
+                  fileId: uploadResult.fileId,
+                  fileName: uploadResult.fileName,
+                  fileUrl: uploadResult.fileUrl,
+                  downloadUrl: uploadResult.downloadUrl
+                });
+              } else {
+                console.error('Upload failed:', uploadResult.error);
+                showAlert('ผิดพลาด', `ไม่สามารถอัปโหลดไฟล์ ${file.name}: ${uploadResult.error}`, '❌');
+              }
+            } catch (error) {
+              console.error('Error uploading file:', error);
+              showAlert('ผิดพลาด', `ไม่สามารถอัปโหลดไฟล์ ${file.name}`, '❌');
+            }
+          }
+
+          if (detail || responsible || time || location || dressCode || remark || attachments.length > 0) {
+            entries.push({
+              id: entryId,
+              detail: detail || 'วันราชการปกติ',
+              responsible: responsible,
+              time: time,
+              location: location,
+              dressCode: dressCode,
+              remark: remark,
+              attachments: attachments
+            });
           }
         }
 
-        if (detail || responsible || time || location || dressCode || remark || attachments.length > 0) {
-          entries.push({
-            id: entryId,
-            detail: detail || 'วันราชการปกติ',
-            responsible: responsible,
-            time: time,
-            location: location,
-            dressCode: dressCode,
-            remark: remark,
-            attachments: attachments
-          });
-        }
-      }
-
-      const dayData = {
-        id: id || Date.now().toString(),
-        monthId: monthId,
-        date: date,
-        entries: entries
-      };
-
-      google.script.run.withSuccessHandler((result) => {
-        loadAllData().then(() => {
-          renderMonthsContainer();
-          renderCalendar();
-          document.getElementById('dayModal').classList.remove('active');
-          hideLoading();
-          showAlert('สำเร็จ', 'บันทึกข้อมูลเรียบร้อยแล้ว', '✅');
-          clearDataCache(); // Clear cache after data change
-        });
-      }).withFailureHandler((error) => {
-        hideLoading();
-        showAlert('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', '❌');
-      }).updateDay(dayData);
-    });
-    document.querySelectorAll('.cancel-modal').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.modal').forEach(modal => {
-          modal.classList.remove('active');
-        });
-      });
-    });
-    document.getElementById('yearFilter').addEventListener('change', debounce(() => {
-      renderCalendar();
-      updateYearInfo();
-    }, 150));
-    document.getElementById('adminYearFilter').addEventListener('change', debounce(() => {
-      renderMonthsContainer();
-    }, 150));
-    // Multiple management event listeners
-    document.getElementById('deleteMultipleMonthsBtn').addEventListener('click', () => {
-      showDeleteMultipleMonthsModal();
-    });
-    document.getElementById('confirmDeleteMultipleMonths').addEventListener('click', () => {
-      const checkboxes = document.querySelectorAll('#monthsCheckboxList input[type="checkbox"]:checked');
-      const monthIds = Array.from(checkboxes).map(cb => cb.value);
-
-      if (monthIds.length === 0) {
-        showAlert('แจ้งเตือน', 'กรุณาเลือกเดือนที่ต้องการลบ', '⚠️');
-        return;
-      }
-
-      showConfirm('ยืนยันการลบ', `คุณต้องการลบ ${monthIds.length} เดือนที่เลือกหรือไม่?`, () => {
-        showLoading();
-
-        google.script.run.withSuccessHandler((result) => {
-          loadAllData().then(() => {
-            renderMonthsContainer();
-            document.getElementById('deleteMultipleMonthsModal').classList.remove('active');
-            hideLoading();
-            showAlert('สำเร็จ', `ลบ ${result.deletedCount} เดือนเรียบร้อยแล้ว`, '✅');
-            clearDataCache(); // Clear cache after data change
-          });
-        }).withFailureHandler((error) => {
-          hideLoading();
-          showAlert('ผิดพลาด', 'ไม่สามารถลบข้อมูลได้', '❌');
-        }).deleteMultipleMonths(monthIds);
-      });
-    });
-
-    // เพิ่มฟังก์ชัน editDay ที่หายไป
-    window.editDay = function (id) {
-      const day = days.find(d => d.id === id);
-      if (!day) return;
-
-      document.getElementById('dayModalTitle').textContent = 'แก้ไขวัน';
-      document.getElementById('dayId').value = day.id;
-      document.getElementById('dayMonthId').value = day.monthId;
-      document.getElementById('dayDate').value = day.date;
-
-      // Clear and populate entries
-      const entriesContainer = document.getElementById('entriesContainer');
-      entriesContainer.innerHTML = '';
-
-      const entries = day.entries || [];
-      if (entries.length === 0) {
-        addEntryRow();
-      } else {
-        entries.forEach(entry => {
-          addEntryRow(entry);
-        });
-      }
-
-      document.getElementById('dayModal').classList.add('active');
-    };
-
-    // ฟังก์ชันเปิด modal แก้ไขจากรายละเอียดวัน (สำหรับแอดมิน)
-    window.editDayFromDetail = function (dayId, monthId, dateStr) {
-      // ปิด modal รายละเอียดวัน
-      document.getElementById('dayDetailModal').classList.remove('active');
-
-      const day = days.find(d => d.id === dayId);
-
-      if (day) {
-        // ถ้ามีวันอยู่แล้ว ใช้ editDay
-        editDay(dayId);
-      } else {
-        // ถ้ายังไม่มีวัน (วันใหม่) เปิด modal เพิ่มวัน
-        document.getElementById('dayModalTitle').textContent = 'เพิ่มวัน';
-        document.getElementById('dayId').value = '';
-        document.getElementById('dayMonthId').value = monthId;
-        document.getElementById('dayDate').value = dateStr;
-
-        // Clear entries and add one empty row
-        const entriesContainer = document.getElementById('entriesContainer');
-        entriesContainer.innerHTML = '';
-        addEntryRow(); // Add one empty entry row
-
-        document.getElementById('dayModal').classList.add('active');
-      }
-    };
-
-    document.getElementById('confirmDeleteMultipleDays').addEventListener('click', () => {
-      const checkboxes = document.querySelectorAll('#daysCheckboxList input[type="checkbox"]:checked');
-      const dayIds = Array.from(checkboxes).map(cb => cb.value);
-
-      if (dayIds.length === 0) {
-        showAlert('แจ้งเตือน', 'กรุณาเลือกวันที่ต้องการลบ', '⚠️');
-        return;
-      }
-
-      showConfirm('ยืนยันการลบ', `คุณต้องการลบ ${dayIds.length} วันที่เลือกหรือไม่?`, () => {
-        showLoading();
+        const dayData = {
+          id: id || Date.now().toString(),
+          monthId: monthId,
+          date: date,
+          entries: entries
+        };
 
         google.script.run.withSuccessHandler((result) => {
           loadAllData().then(() => {
             renderMonthsContainer();
             renderCalendar();
-            document.getElementById('deleteMultipleDaysModal').classList.remove('active');
+            document.getElementById('dayModal').classList.remove('active');
             hideLoading();
-            showAlert('สำเร็จ', `ลบ ${result.deletedCount} วันเรียบร้อยแล้ว`, '✅');
+            showAlert('สำเร็จ', 'บันทึกข้อมูลเรียบร้อยแล้ว', '✅');
             clearDataCache(); // Clear cache after data change
           });
         }).withFailureHandler((error) => {
           hideLoading();
-          showAlert('ผิดพลาด', 'ไม่สามารถลบข้อมูลได้', '❌');
-        }).deleteMultipleDays(dayIds);
+          showAlert('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', '❌');
+        }).updateDay(dayData);
       });
-    });
-
-    document.getElementById('editMultipleDaysForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-
-      const checkboxes = document.querySelectorAll('#editDaysCheckboxList input[type="checkbox"]:checked');
-      const dayIds = Array.from(checkboxes).map(cb => cb.value);
-      const newDetail = document.getElementById('newDayDetail').value.trim();
-
-      if (dayIds.length === 0) {
-        showAlert('แจ้งเตือน', 'กรุณาเลือกวันที่ต้องการแก้ไข', '⚠️');
-        return;
-      }
-      if (!newDetail) {
-        showAlert('แจ้งเตือน', 'กรุณากรอกรายละเอียดใหม่', '⚠️');
-        return;
-      }
-
-      showLoading();
-
-      // สร้าง array ของ day updates
-      const dayUpdates = dayIds.map(dayId => ({
-        dayId: dayId,
-        newDetail: newDetail
-      }));
-
-      google.script.run.withSuccessHandler((result) => {
-        loadAllData().then(() => {
-          renderMonthsContainer();
-          renderCalendar();
-          document.getElementById('editMultipleDaysModal').classList.remove('active');
-          hideLoading();
-          showAlert('สำเร็จ', `แก้ไข ${result.updatedCount} วันเรียบร้อยแล้ว`, '✅');
-          clearDataCache(); // Clear cache after data change
+      document.querySelectorAll('.cancel-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.modal').forEach(modal => {
+            modal.classList.remove('active');
+          });
         });
-      }).withFailureHandler((error) => {
-        hideLoading();
-        showAlert('ผิดพลาด', 'ไม่สามารถแก้ไขข้อมูลได้', '❌');
-      }).updateMultipleDays(dayUpdates);
-    });
-    // Element SDK implementation
-    async function onConfigChange(config) {
-      const schoolName = config.school_name || defaultConfig.school_name;
-      const educationOffice = config.education_office || defaultConfig.education_office;
-      document.getElementById('headerTitle').textContent = settings.appTitle || '📅 ปฎิทินดำเนินงาน/นับวันราชการ';
-      document.getElementById('headerSchool').textContent = schoolName;
-      document.getElementById('headerOffice').textContent = educationOffice;
-      document.getElementById('footerTitle').textContent = `ปฎิทินดำเนินงาน/นับวันราชการ ${schoolName}`;
-      document.getElementById('footerOffice').textContent = educationOffice;
-    }
-    if (window.elementSdk) {
-      window.elementSdk.init({
-        defaultConfig: defaultConfig,
-        onConfigChange: onConfigChange,
-        mapToCapabilities: (config) => ({
-          recolorables: [],
-          borderables: [],
-          fontEditable: undefined,
-          fontSizeable: undefined
-        }),
-        mapToEditPanelValues: (config) => new Map([
-          ["school_name", config.school_name || defaultConfig.school_name],
-          ["education_office", config.education_office || defaultConfig.education_office]
-        ])
       });
-    }
-    // Add entry button event listener
-    document.getElementById('addEntryBtn').addEventListener('click', () => {
-      addEntryRow();
-    });
-    // Settings form event listeners
-    document.getElementById('settingsForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      showLoading();
+      document.getElementById('yearFilter').addEventListener('change', debounce(() => {
+        renderCalendar();
+        updateYearInfo();
+      }, 150));
+      document.getElementById('adminYearFilter').addEventListener('change', debounce(() => {
+        renderMonthsContainer();
+      }, 150));
+      // Multiple management event listeners
+      document.getElementById('deleteMultipleMonthsBtn').addEventListener('click', () => {
+        showDeleteMultipleMonthsModal();
+      });
+      document.getElementById('confirmDeleteMultipleMonths').addEventListener('click', () => {
+        const checkboxes = document.querySelectorAll('#monthsCheckboxList input[type="checkbox"]:checked');
+        const monthIds = Array.from(checkboxes).map(cb => cb.value);
 
-      const appTitle = document.getElementById('settingsAppTitle').value.trim();
-      const schoolName = document.getElementById('settingsSchoolName').value;
-      const educationOffice = document.getElementById('settingsEducationOffice').value;
-      const logoFile = document.getElementById('schoolLogo').files[0];
-
-      let newSettings = { ...settings };
-      newSettings.appTitle = appTitle;
-      newSettings.schoolName = schoolName;
-      newSettings.educationOffice = educationOffice;
-
-      if (logoFile) {
-        // Check file size (2MB limit)
-        if (logoFile.size > 2 * 1024 * 1024) {
-          hideLoading();
-          showAlert('ผิดพลาด', 'ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB', '❌');
+        if (monthIds.length === 0) {
+          showAlert('แจ้งเตือน', 'กรุณาเลือกเดือนที่ต้องการลบ', '⚠️');
           return;
         }
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          newSettings.schoolLogo = e.target.result;
+        showConfirm('ยืนยันการลบ', `คุณต้องการลบ ${monthIds.length} เดือนที่เลือกหรือไม่?`, () => {
+          showLoading();
+
+          google.script.run.withSuccessHandler((result) => {
+            loadAllData().then(() => {
+              renderMonthsContainer();
+              document.getElementById('deleteMultipleMonthsModal').classList.remove('active');
+              hideLoading();
+              showAlert('สำเร็จ', `ลบ ${result.deletedCount} เดือนเรียบร้อยแล้ว`, '✅');
+              clearDataCache(); // Clear cache after data change
+            });
+          }).withFailureHandler((error) => {
+            hideLoading();
+            showAlert('ผิดพลาด', 'ไม่สามารถลบข้อมูลได้', '❌');
+          }).deleteMultipleMonths(monthIds);
+        });
+      });
+
+      // เพิ่มฟังก์ชัน editDay ที่หายไป
+      window.editDay = function (id) {
+        const day = days.find(d => d.id === id);
+        if (!day) return;
+
+        document.getElementById('dayModalTitle').textContent = 'แก้ไขวัน';
+        document.getElementById('dayId').value = day.id;
+        document.getElementById('dayMonthId').value = day.monthId;
+        document.getElementById('dayDate').value = day.date;
+
+        // Clear and populate entries
+        const entriesContainer = document.getElementById('entriesContainer');
+        entriesContainer.innerHTML = '';
+
+        const entries = day.entries || [];
+        if (entries.length === 0) {
+          addEntryRow();
+        } else {
+          entries.forEach(entry => {
+            addEntryRow(entry);
+          });
+        }
+
+        document.getElementById('dayModal').classList.add('active');
+      };
+
+      // ฟังก์ชันเปิด modal แก้ไขจากรายละเอียดวัน (สำหรับแอดมิน)
+      window.editDayFromDetail = function (dayId, monthId, dateStr) {
+        // ปิด modal รายละเอียดวัน
+        document.getElementById('dayDetailModal').classList.remove('active');
+
+        const day = days.find(d => d.id === dayId);
+
+        if (day) {
+          // ถ้ามีวันอยู่แล้ว ใช้ editDay
+          editDay(dayId);
+        } else {
+          // ถ้ายังไม่มีวัน (วันใหม่) เปิด modal เพิ่มวัน
+          document.getElementById('dayModalTitle').textContent = 'เพิ่มวัน';
+          document.getElementById('dayId').value = '';
+          document.getElementById('dayMonthId').value = monthId;
+          document.getElementById('dayDate').value = dateStr;
+
+          // Clear entries and add one empty row
+          const entriesContainer = document.getElementById('entriesContainer');
+          entriesContainer.innerHTML = '';
+          addEntryRow(); // Add one empty entry row
+
+          document.getElementById('dayModal').classList.add('active');
+        }
+      };
+
+      document.getElementById('confirmDeleteMultipleDays').addEventListener('click', () => {
+        const checkboxes = document.querySelectorAll('#daysCheckboxList input[type="checkbox"]:checked');
+        const dayIds = Array.from(checkboxes).map(cb => cb.value);
+
+        if (dayIds.length === 0) {
+          showAlert('แจ้งเตือน', 'กรุณาเลือกวันที่ต้องการลบ', '⚠️');
+          return;
+        }
+
+        showConfirm('ยืนยันการลบ', `คุณต้องการลบ ${dayIds.length} วันที่เลือกหรือไม่?`, () => {
+          showLoading();
+
+          google.script.run.withSuccessHandler((result) => {
+            loadAllData().then(() => {
+              renderMonthsContainer();
+              renderCalendar();
+              document.getElementById('deleteMultipleDaysModal').classList.remove('active');
+              hideLoading();
+              showAlert('สำเร็จ', `ลบ ${result.deletedCount} วันเรียบร้อยแล้ว`, '✅');
+              clearDataCache(); // Clear cache after data change
+            });
+          }).withFailureHandler((error) => {
+            hideLoading();
+            showAlert('ผิดพลาด', 'ไม่สามารถลบข้อมูลได้', '❌');
+          }).deleteMultipleDays(dayIds);
+        });
+      });
+
+      document.getElementById('editMultipleDaysForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const checkboxes = document.querySelectorAll('#editDaysCheckboxList input[type="checkbox"]:checked');
+        const dayIds = Array.from(checkboxes).map(cb => cb.value);
+
+        const newDetail = document.getElementById('newDayDetail').value.trim();
+        const multiDayTime = document.getElementById('multiDayTime').value.trim();
+        const multiDayLocation = document.getElementById('multiDayLocation').value.trim();
+        const multiDayDressCode = document.getElementById('multiDayDressCode').value.trim();
+        const multiDayResponsible = document.getElementById('multiDayResponsible').value.trim();
+        const multiDayRemark = document.getElementById('multiDayRemark').value.trim();
+
+        if (dayIds.length === 0) {
+          showAlert('แจ้งเตือน', 'กรุณาเลือกวันที่ต้องการแก้ไข', '⚠️');
+          return;
+        }
+
+        if (!newDetail && !multiDayTime && !multiDayLocation && !multiDayDressCode && !multiDayResponsible && !multiDayRemark) {
+          showAlert('แจ้งเตือน', 'กรุณากรอกข้อมูลอย่างน้อย 1 ช่องเพื่อแก้ไข', '⚠️');
+          return;
+        }
+
+        showLoading();
+
+        const updates = {
+          detail: newDetail,
+          time: multiDayTime,
+          location: multiDayLocation,
+          dressCode: multiDayDressCode,
+          responsible: multiDayResponsible,
+          remark: multiDayRemark
+        };
+
+        google.script.run.withSuccessHandler((result) => {
+          loadAllData().then(() => {
+            renderMonthsContainer();
+            renderCalendar();
+            document.getElementById('editMultipleDaysModal').classList.remove('active');
+            hideLoading();
+            showAlert('สำเร็จ', `แก้ไข ${result.updatedCount} วันเรียบร้อยแล้ว`, '✅');
+            clearDataCache(); // Clear cache after data change
+          });
+        }).withFailureHandler((error) => {
+          hideLoading();
+          showAlert('ผิดพลาด', 'ไม่สามารถแก้ไขข้อมูลได้', '❌');
+        }).updateMultipleDays(dayIds, updates);
+      });
+      // Element SDK implementation
+      async function onConfigChange(config) {
+        const schoolName = config.school_name || defaultConfig.school_name;
+        const educationOffice = config.education_office || defaultConfig.education_office;
+        document.getElementById('headerTitle').textContent = settings.appTitle || '📅 ปฎิทินดำเนินงาน/นับวันราชการ';
+        document.getElementById('headerSchool').textContent = schoolName;
+        document.getElementById('headerOffice').textContent = educationOffice;
+        document.getElementById('footerTitle').textContent = `ปฎิทินดำเนินงาน/นับวันราชการ ${schoolName}`;
+        document.getElementById('footerOffice').textContent = educationOffice;
+      }
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig: defaultConfig,
+          onConfigChange: onConfigChange,
+          mapToCapabilities: (config) => ({
+            recolorables: [],
+            borderables: [],
+            fontEditable: undefined,
+            fontSizeable: undefined
+          }),
+          mapToEditPanelValues: (config) => new Map([
+            ["school_name", config.school_name || defaultConfig.school_name],
+            ["education_office", config.education_office || defaultConfig.education_office]
+          ])
+        });
+      }
+      // Add entry button event listener
+      document.getElementById('addEntryBtn').addEventListener('click', () => {
+        addEntryRow();
+      });
+      // Settings form event listeners
+      document.getElementById('settingsForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        showLoading();
+
+        const appTitle = document.getElementById('settingsAppTitle').value.trim();
+        const schoolName = document.getElementById('settingsSchoolName').value;
+        const educationOffice = document.getElementById('settingsEducationOffice').value;
+        const logoFile = document.getElementById('schoolLogo').files[0];
+
+        let newSettings = { ...settings };
+        newSettings.appTitle = appTitle;
+        newSettings.schoolName = schoolName;
+        newSettings.educationOffice = educationOffice;
+
+        if (logoFile) {
+          // Check file size (2MB limit)
+          if (logoFile.size > 2 * 1024 * 1024) {
+            hideLoading();
+            showAlert('ผิดพลาด', 'ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB', '❌');
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            newSettings.schoolLogo = e.target.result;
+            google.script.run.withSuccessHandler(() => {
+              loadAllData().then(() => {
+                updateHeaderAndFooter();
+                loadSettingsForm();
+                hideLoading();
+                showAlert('สำเร็จ', 'บันทึกการตั้งค่าเรียบร้อยแล้ว', '✅');
+                clearDataCache(); // Clear cache after data change
+              });
+            }).saveSettings(newSettings);
+          };
+          reader.readAsDataURL(logoFile);
+        } else {
           google.script.run.withSuccessHandler(() => {
             loadAllData().then(() => {
               updateHeaderAndFooter();
-              loadSettingsForm();
               hideLoading();
               showAlert('สำเร็จ', 'บันทึกการตั้งค่าเรียบร้อยแล้ว', '✅');
               clearDataCache(); // Clear cache after data change
             });
           }).saveSettings(newSettings);
-        };
-        reader.readAsDataURL(logoFile);
-      } else {
-        google.script.run.withSuccessHandler(() => {
-          loadAllData().then(() => {
-            updateHeaderAndFooter();
-            hideLoading();
-            showAlert('สำเร็จ', 'บันทึกการตั้งค่าเรียบร้อยแล้ว', '✅');
-            clearDataCache(); // Clear cache after data change
-          });
-        }).saveSettings(newSettings);
-      }
-    });
-    document.getElementById('resetSettings').addEventListener('click', () => {
-      showConfirm('ยืนยันการรีเซ็ต', 'คุณต้องการรีเซ็ตการตั้งค่าเป็นค่าเริ่มต้นหรือไม่?', () => {
-        const defaultSettings = {
-          appTitle: '',
-          schoolName: 'เทศบาลเมืองอุทัยธานี',
-          educationOffice: 'จังหวัดอุทัยธานี',
-          schoolLogo: ''
-        };
-        google.script.run.withSuccessHandler(() => {
-          loadAllData().then(() => {
-            loadSettingsForm();
-            updateHeaderAndFooter();
-            showAlert('สำเร็จ', 'รีเซ็ตการตั้งค่าเรียบร้อยแล้ว', '✅');
-          });
-        }).saveSettings(defaultSettings);
-        clearDataCache(); // Clear cache after data change
-      });
-    });
-    document.getElementById('schoolLogo').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      const logoPreview = document.getElementById('logoPreview');
-
-      if (file) {
-        // Check file size
-        if (file.size > 2 * 1024 * 1024) {
-          showAlert('ผิดพลาด', 'ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB', '❌');
-          e.target.value = '';
-          return;
         }
+      });
+      document.getElementById('resetSettings').addEventListener('click', () => {
+        showConfirm('ยืนยันการรีเซ็ต', 'คุณต้องการรีเซ็ตการตั้งค่าเป็นค่าเริ่มต้นหรือไม่?', () => {
+          const defaultSettings = {
+            appTitle: '',
+            schoolName: 'เทศบาลเมืองอุทัยธานี',
+            educationOffice: 'จังหวัดอุทัยธานี',
+            schoolLogo: ''
+          };
+          google.script.run.withSuccessHandler(() => {
+            loadAllData().then(() => {
+              loadSettingsForm();
+              updateHeaderAndFooter();
+              showAlert('สำเร็จ', 'รีเซ็ตการตั้งค่าเรียบร้อยแล้ว', '✅');
+            });
+          }).saveSettings(defaultSettings);
+          clearDataCache(); // Clear cache after data change
+        });
+      });
+      document.getElementById('schoolLogo').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        const logoPreview = document.getElementById('logoPreview');
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          logoPreview.innerHTML = `<img src="${e.target.result}" alt="ตัวอย่างโลโก้" class="max-w-full max-h-full object-contain" loading="lazy" decoding="async" width="128" height="128">`;
-        };
-        reader.readAsDataURL(file);
-      } else {
-        logoPreview.innerHTML = `
+        if (file) {
+          // Check file size
+          if (file.size > 2 * 1024 * 1024) {
+            showAlert('ผิดพลาด', 'ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB', '❌');
+            e.target.value = '';
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            logoPreview.innerHTML = `<img src="${e.target.result}" alt="ตัวอย่างโลโก้" class="max-w-full max-h-full object-contain" loading="lazy" decoding="async" width="128" height="128">`;
+          };
+          reader.readAsDataURL(file);
+        } else {
+          logoPreview.innerHTML = `
         <div class="text-gray-400">
           <svg class="w-16 h-16 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path>
@@ -3547,83 +3609,83 @@
           <p class="text-sm">ไม่มีรูปภาพ</p>
         </div>
       `;
-      }
-    });
-    // Select all checkboxes functionality
-    document.getElementById('selectAllMonths').addEventListener('change', (e) => {
-      const checkboxes = document.querySelectorAll('.month-checkbox');
-      checkboxes.forEach(cb => cb.checked = e.target.checked);
-    });
-    document.getElementById('selectAllDays').addEventListener('change', (e) => {
-      const checkboxes = document.querySelectorAll('.day-checkbox');
-      checkboxes.forEach(cb => cb.checked = e.target.checked);
-    });
-    // Initialize
-    (async () => {
-      showLoading();
-      await loadAllData();
-      hideLoading();
-      updateYearFilters();
-      updateHeaderAndFooter();
-      renderCalendar();
-    })();
-    // Upcoming Activities Ticker Logic
-    function renderUpcomingActivitiesTicker() {
-      const tickerContent = document.getElementById('tickerContent');
-
-      if (!window.days || window.days.length === 0) return;
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      // Filter and flatten events
-      let upcomingEvents = [];
-
-      window.days.forEach(day => {
-        const dateParts = day.date.split('-');
-        const eventDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-
-        if (eventDate >= today) {
-          if (day.entries && day.entries.length > 0) {
-            day.entries.forEach(entry => {
-              const detail = entry.detail || '';
-              const responsible = entry.responsible || '';
-              const hasAttachments = entry.attachments && entry.attachments.length > 0;
-
-              // Skip common non-events
-              const isCommon = detail === 'วันราชการปกติ' || detail === 'วันเสาร์' || detail === 'วันอาทิตย์';
-
-              // Include if it's special OR has a responsible person OR has attachments
-              if (!isCommon && (detail || responsible || hasAttachments)) {
-                upcomingEvents.push({
-                  date: eventDate,
-                  dateStr: day.date,
-                  detail: detail,
-                  responsible: responsible,
-                  type: detail.includes('หยุด') || detail.includes('ปิดราชการ') ? 'holiday' : 'activity'
-                });
-              }
-            });
-          }
         }
       });
+      // Select all checkboxes functionality
+      document.getElementById('selectAllMonths').addEventListener('change', (e) => {
+        const checkboxes = document.querySelectorAll('.month-checkbox');
+        checkboxes.forEach(cb => cb.checked = e.target.checked);
+      });
+      document.getElementById('selectAllDays').addEventListener('change', (e) => {
+        const checkboxes = document.querySelectorAll('.day-checkbox');
+        checkboxes.forEach(cb => cb.checked = e.target.checked);
+      });
+      // Initialize
+      (async () => {
+        showLoading();
+        await loadAllData();
+        hideLoading();
+        updateYearFilters();
+        updateHeaderAndFooter();
+        renderCalendar();
+      })();
+      // Upcoming Activities Ticker Logic
+      function renderUpcomingActivitiesTicker() {
+        const tickerContent = document.getElementById('tickerContent');
 
-      // Sort by date
-      upcomingEvents.sort((a, b) => a.date - b.date);
+        if (!window.days || window.days.length === 0) return;
 
-      // Take top 20
-      upcomingEvents = upcomingEvents.slice(0, 20);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-      // If no upcoming events, keep the default Welcome message in HTML
-      if (upcomingEvents.length === 0) return;
+        // Filter and flatten events
+        let upcomingEvents = [];
 
-      // Generate HTML
-      const html = upcomingEvents.map(event => {
-        const thaiDate = event.date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
-        const icon = event.type === 'holiday' ? '🔴' : '🗓️';
-        const style = event.type === 'holiday' ? 'text-red-200' : 'text-white';
-        const resp = event.responsible ? `<span class="text-yellow-300 text-sm ml-2">(${event.responsible})</span>` : '';
-        return `
+        window.days.forEach(day => {
+          const dateParts = day.date.split('-');
+          const eventDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+
+          if (eventDate >= today) {
+            if (day.entries && day.entries.length > 0) {
+              day.entries.forEach(entry => {
+                const detail = entry.detail || '';
+                const responsible = entry.responsible || '';
+                const hasAttachments = entry.attachments && entry.attachments.length > 0;
+
+                // Skip common non-events
+                const isCommon = detail === 'วันราชการปกติ' || detail === 'วันเสาร์' || detail === 'วันอาทิตย์';
+
+                // Include if it's special OR has a responsible person OR has attachments
+                if (!isCommon && (detail || responsible || hasAttachments)) {
+                  upcomingEvents.push({
+                    date: eventDate,
+                    dateStr: day.date,
+                    detail: detail,
+                    responsible: responsible,
+                    type: detail.includes('หยุด') || detail.includes('ปิดราชการ') ? 'holiday' : 'activity'
+                  });
+                }
+              });
+            }
+          }
+        });
+
+        // Sort by date
+        upcomingEvents.sort((a, b) => a.date - b.date);
+
+        // Take top 20
+        upcomingEvents = upcomingEvents.slice(0, 20);
+
+        // If no upcoming events, keep the default Welcome message in HTML
+        if (upcomingEvents.length === 0) return;
+
+        // Generate HTML
+        const html = upcomingEvents.map(event => {
+          const thaiDate = event.date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+          const icon = event.type === 'holiday' ? '🔴' : '🗓️';
+          const style = event.type === 'holiday' ? 'text-red-200' : 'text-white';
+          const resp = event.responsible ? `<span class="text-yellow-300 text-sm ml-2">(${event.responsible})</span>` : '';
+          return `
           <div class="ticker-item inline-flex items-center mr-16 ${style}" onclick="window.showDayDetail(window.days.find(d => d.date === '${event.dateStr}'))">
             <span class="mr-3 text-2xl">${icon}</span>
             <span class="font-bold mr-3 text-lg">${thaiDate}:</span>
@@ -3631,17 +3693,17 @@
             ${resp}
           </div>
         `;
-      }).join('');
+        }).join('');
 
-      tickerContent.innerHTML = html;
-    }
+        tickerContent.innerHTML = html;
+      }
 
-    function closeTicker() {
-      document.getElementById('activityTicker').style.transition = 'all 0.5s ease';
-      document.getElementById('activityTicker').style.transform = 'translateY(-100%)';
-      document.getElementById('tickerSpacer').style.height = '0px';
-    }
-  </script>
+      function closeTicker() {
+        document.getElementById('activityTicker').style.transition = 'all 0.5s ease';
+        document.getElementById('activityTicker').style.transform = 'translateY(-100%)';
+        document.getElementById('tickerSpacer').style.height = '0px';
+      }
+    </script>
 </body>
 
 </html>

@@ -1,17 +1,20 @@
 // code.gs
 // =====================================================
 // Uthai Event Calendar - Backend Functions (Google Apps Script)
-// Version: 1.1.0
-// Last Updated: 2024-02-16
+// Version: 1.2.0
+// Last Updated: 2026-03-02
 // =====================================================
 // CHANGELOG:
+// v1.2.0 (2026-03-02)
+//   - Added `updateMultipleDays` for bulk multi-field updates.
+//   - Implemented fixed public holidays tracking in `addMonth`.
+//   - Extended event entry schema with Time, Location, DressCode.
 // v1.1.0 (2024-02-16)
 //   - Added uploadFileAttachment() function for file uploads
 //   - Added deleteFileAttachment() function for file deletion
 //   - Added getFileInfo() function for file information
 //   - Added ATTACHMENT_FOLDER_ID constant for Google Drive storage
 //   - Updated default settings for Uthai Municipality
-//   - File size limit: 5MB per file
 // v1.0.0 (Initial)
 //   - Base calendar system with Google Sheets integration
 // =====================================================
@@ -154,8 +157,29 @@ function addDaysForMonth(monthId, yearMonth) {
   const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
   let newDays = [];
 
+  // รายการวันหยุดประจำรัฐที่วันที่ตรงกันทุกปี (ด/ว)
+  // หมายเหตุ: วันหยุดทางจันทรคติ เช่น วันมาฆบูชา วิสาขบูชา จะเปลี่ยนไปในแต่ละปี แอดมินสามารถเข้าไปแก้ไขเพิ่มเติมได้
+  const fixedHolidays = {
+    '01-01': 'วันขึ้นปีใหม่',
+    '04-06': 'วันจักรี',
+    '04-13': 'วันสงกรานต์',
+    '04-14': 'วันสงกรานต์',
+    '04-15': 'วันสงกรานต์',
+    '05-01': 'วันแรงงานแห่งชาติ',
+    '05-04': 'วันฉัตรมงคล',
+    '06-03': 'วันเฉลิมฯ พระราชินี',
+    '07-28': 'วันเฉลิมฯ ร.10',
+    '08-12': 'วันเฉลิมฯ พระบรมราชชนนีพันปีหลวง (วันแม่แห่งชาติ)',
+    '10-13': 'วันนวมินทรมหาราช',
+    '10-23': 'วันปิยมหาราช',
+    '12-05': 'วันคล้ายวันพระบรมราชสมภพ ร.9 (วันพ่อแห่งชาติ)',
+    '12-10': 'วันรัฐธรรมนูญ',
+    '12-31': 'วันสิ้นปี'
+  };
+
   for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${year}-${month}-${String(day).padStart(2, '0')}`;
+    const dayStr = String(day).padStart(2, '0');
+    const dateStr = `${year}-${month}-${dayStr}`;
 
     // ถ้ามีข้อมูลอยู่แล้วใช้ข้อมูลเดิม, ถ้าไม่มีสร้างใหม่
     if (existingDaysMap[dateStr]) {
@@ -165,8 +189,15 @@ function addDaysForMonth(monthId, yearMonth) {
       const dayOfWeek = date.getDay();
       let detail = '';
 
-      if (dayOfWeek === 0) detail = 'วันอาทิตย์';
-      else if (dayOfWeek === 6) detail = 'วันเสาร์';
+      const monthDayCheck = `${month}-${dayStr}`;
+
+      if (fixedHolidays[monthDayCheck]) {
+        detail = fixedHolidays[monthDayCheck];
+      } else if (dayOfWeek === 0) {
+        detail = 'วันอาทิตย์';
+      } else if (dayOfWeek === 6) {
+        detail = 'วันเสาร์';
+      }
 
       newDays.push({
         id: (Date.now() + day).toString(),
@@ -175,7 +206,12 @@ function addDaysForMonth(monthId, yearMonth) {
         entries: detail ? [{
           id: (Date.now() + Math.random()).toString(),
           detail: detail,
-          responsible: ''
+          responsible: '',
+          time: '',
+          location: '',
+          dressCode: '',
+          remark: '',
+          attachments: []
         }] : []
       });
     }
@@ -193,7 +229,7 @@ function addDaysForMonth(monthId, yearMonth) {
   return { success: true, count: newDays.length };
 }
 
-function updateMultipleDays(dayUpdates) {
+function updateMultipleDays(dayIds, updates) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const daysSheet = ss.getSheetByName('Days');
 
@@ -202,19 +238,33 @@ function updateMultipleDays(dayUpdates) {
   let updatedCount = 0;
 
   // อัพเดทเฉพาะ days ที่เลือก
-  dayUpdates.forEach(update => {
-    const index = allDays.findIndex(d => d.id === update.dayId);
+  dayIds.forEach(dayId => {
+    const index = allDays.findIndex(d => d.id === dayId);
     if (index !== -1) {
-      // อัพเดทเฉพาะ entry แรกด้วย detail ใหม่
-      if (allDays[index].entries && allDays[index].entries.length > 0) {
-        allDays[index].entries[0].detail = update.newDetail;
-      } else {
+      // ตรวจสอบว่ามี entry อยู่หรือไม่
+      if (!allDays[index].entries || allDays[index].entries.length === 0) {
         allDays[index].entries = [{
           id: (Date.now() + Math.random()).toString(),
-          detail: update.newDetail,
-          responsible: ''
+          detail: '',
+          responsible: '',
+          time: '',
+          location: '',
+          dressCode: '',
+          remark: '',
+          attachments: []
         }];
       }
+
+      // อัพเดทข้อมูลลงใน entry แรก
+      const currentEntry = allDays[index].entries[0];
+
+      if (updates.detail !== undefined && updates.detail !== '') currentEntry.detail = updates.detail;
+      if (updates.time !== undefined && updates.time !== '') currentEntry.time = updates.time;
+      if (updates.location !== undefined && updates.location !== '') currentEntry.location = updates.location;
+      if (updates.dressCode !== undefined && updates.dressCode !== '') currentEntry.dressCode = updates.dressCode;
+      if (updates.responsible !== undefined && updates.responsible !== '') currentEntry.responsible = updates.responsible;
+      if (updates.remark !== undefined && updates.remark !== '') currentEntry.remark = updates.remark;
+
       updatedCount++;
     }
   });
@@ -263,6 +313,9 @@ function addMonth(yearId, monthValue, monthName) {
 
   const updatedMonths = [...allMonths, newMonth];
   saveMonths(updatedMonths);
+
+  // เพิ่มวันใส่เดือนแบบอัตโนมัติทันที
+  addDaysForMonth(newMonth.id, monthValue);
 
   return { success: true, month: newMonth };
 }
